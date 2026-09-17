@@ -1,0 +1,34 @@
+# AutoML Scientist Production Configuration
+system:
+  name: "AutoML Scientist (Prod)"
+  environment: "production"
+  debug: false
+
+llm:
+  default_provider: "anthropic"
+  default_model: "claude-3-5-sonnet-20241022"
+  fallback_model: "gpt-4o"
+  temperature: 0.5
+  max_tokens: 4096
+
+research:
+  max_experiments: 30
+  compute_budget_minutes: 360
+  num_workers: 4
+  max_debug_depth: 5
+  statistical_confidence_level: 0.95
+
+sandbox:
+  docker_enabled: true
+  docker_image: "automl-scientist-sandbox:latest"
+  cpu_limit: "4.0"
+  memory_limit: "8g"
+  timeout_seconds: 600
+  network_access: false
+
+database:
+  pool_size: 20
+  max_overflow: 30
+
+logging:
+  level: "INFO"

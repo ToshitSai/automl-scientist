@@ -1,0 +1,7 @@
+node_modules
+upstream_ai_scientist_v2
+.git
+.env
+.env.example
+docs
+tmp
