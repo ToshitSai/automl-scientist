@@ -3,5 +3,8 @@ dist
 upstream_ai_scientist_v2
 .env
 .vercel
-
-.vercel
+experiments/
+uploaded_datasets/
+test_workspace/
+__pycache__/
+*.pyc

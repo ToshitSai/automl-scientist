@@ -1,9 +1,54 @@
-import React from 'react';
-import { AlertTriangle, AlertCircle, HelpCircle, Layers, Cpu, CheckCircle2 } from 'lucide-react';
-import { INITIAL_ERROR_ANALYSIS } from '../mockData';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, HelpCircle, Loader2 } from 'lucide-react';
+import { fetchProjectErrorAnalysis } from '../api';
 
-export default function ErrorAnalysisView() {
-  const err = INITIAL_ERROR_ANALYSIS;
+export default function ErrorAnalysisView({ activeProject }) {
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    setLoading(true);
+    fetchProjectErrorAnalysis(activeProject.id).then((data) => {
+      setErr(data);
+      setLoading(false);
+    });
+  }, [activeProject?.id]);
+
+  if (!activeProject) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <AlertTriangle className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200 font-mono">Not configured</h3>
+          <p className="text-xs text-slate-400">Select or start a research project to view real error analysis diagnostics.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-3 text-amber-400 font-mono text-sm">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Performing error diagnostics and slice analysis...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!err) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200 font-mono">Not configured</h3>
+          <p className="text-xs text-slate-400">Error analysis has not been executed yet for project '{activeProject.name}'.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
@@ -23,14 +68,12 @@ export default function ErrorAnalysisView() {
       {/* Top Counts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className="glass-panel p-5 rounded-xl border-amber-500/20 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">False Positives (Legitimate flagged as Fraud)</span>
+          <span className="text-xs text-slate-400 font-medium">False Positives (Class 0 predicted as Class 1)</span>
           <p className="text-3xl font-bold font-mono text-amber-400">{err.falsePositivesCount}</p>
-          <p className="text-[11px] text-slate-400">Triggered on high-amount purchase anomalies (V4 variance)</p>
         </div>
         <div className="glass-panel p-5 rounded-xl border-red-500/20 space-y-1">
-          <span className="text-xs text-slate-400 font-medium">False Negatives (Missed Fraud Cases)</span>
+          <span className="text-xs text-slate-400 font-medium">False Negatives (Missed Class 1 Targets)</span>
           <p className="text-3xl font-bold font-mono text-red-400">{err.falseNegativesCount}</p>
-          <p className="text-[11px] text-slate-400">Concentrated in micro-transaction stealth fraud (&lt; $10.00)</p>
         </div>
       </div>
 
@@ -46,24 +89,26 @@ export default function ErrorAnalysisView() {
       </div>
 
       {/* Slice-Level Analysis */}
-      <div className="glass-panel p-6 rounded-xl space-y-4">
-        <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider font-mono">
-          Sub-Population & Slice-Level Performance Breakdown
-        </h3>
-        <div className="space-y-3">
-          {err.sliceAnalysis.map((slice) => (
-            <div key={slice.slice} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-200">{slice.slice}</span>
-                <span className="font-mono text-emerald-400 font-bold bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-                  Recall: {slice.recall} ({slice.fraudCount} cases)
-                </span>
+      {err.sliceAnalysis && err.sliceAnalysis.length > 0 && (
+        <div className="glass-panel p-6 rounded-xl space-y-4">
+          <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider font-mono">
+            Sub-Population & Slice-Level Performance Breakdown
+          </h3>
+          <div className="space-y-3">
+            {err.sliceAnalysis.map((slice) => (
+              <div key={slice.slice} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-200">{slice.slice}</span>
+                  <span className="font-mono text-emerald-400 font-bold bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                    Accuracy: {slice.recall}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">{slice.note}</p>
               </div>
-              <p className="text-xs text-slate-400">{slice.note}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

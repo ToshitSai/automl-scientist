@@ -1,17 +1,67 @@
-import React from 'react';
-import { BarChart3, TrendingUp, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BarChart3, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { fetchProjectTree, fetchProjectBaselines } from '../api';
 
-export default function ResultsView() {
-  const chartData = [
-    { name: 'Logistic Reg', PR_AUC: 0.712, F1: 0.694, Recall: 0.612 },
-    { name: 'Random Forest', PR_AUC: 0.825, F1: 0.814, Recall: 0.756 },
-    { name: 'XGB Raw Baseline', PR_AUC: 0.841, F1: 0.835, Recall: 0.781 },
-    { name: 'Exp 1: Pos Weight', PR_AUC: 0.862, F1: 0.838, Recall: 0.841 },
-    { name: 'Exp 1.1: PosW + Thresh', PR_AUC: 0.884, F1: 0.842, Recall: 0.880 },
-    { name: 'Exp 2: SMOTE', PR_AUC: 0.849, F1: 0.820, Recall: 0.815 },
-    { name: 'Exp 3: IsoForest Meta', PR_AUC: 0.858, F1: 0.830, Recall: 0.802 }
-  ];
+export default function ResultsView({ activeProject }) {
+  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    setLoading(true);
+    Promise.all([
+      fetchProjectBaselines(activeProject.id),
+      fetchProjectTree(activeProject.id)
+    ]).then(([baselines, nodes]) => {
+      const data = [];
+      baselines.forEach((b) => {
+        data.push({
+          name: b.name,
+          PrimaryMetric: listFirstMetricVal(b.metrics),
+          Status: b.status
+        });
+      });
+      nodes.forEach((n) => {
+        data.push({
+          name: n.title,
+          PrimaryMetric: n.metricValue,
+          Status: n.status
+        });
+      });
+      setChartData(data);
+      setLoading(false);
+    });
+  }, [activeProject?.id]);
+
+  const listFirstMetricVal = (metrics) => {
+    if (!metrics) return 0;
+    const keys = Object.keys(metrics);
+    return keys.length > 0 ? metrics[keys[0]] : 0;
+  };
+
+  if (!activeProject) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <BarChart3 className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200 font-mono">Not configured</h3>
+          <p className="text-xs text-slate-400">Select or start a research project to view evaluation results.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-3 text-cyan-400 font-mono text-sm">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Compiling comparative evaluation metrics...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
@@ -24,7 +74,7 @@ export default function ResultsView() {
           Metrics Comparison Across Experiment Tree
         </h2>
         <p className="text-slate-400 text-sm">
-          Track progression from baseline benchmarks to the winning hypothesis node (Exp 1.1: Threshold Optimization + Pos-Weighting).
+          Track progression from baseline benchmarks to hypotheses nodes for &apos;{activeProject.name}&apos;.
         </p>
       </div>
 
@@ -32,29 +82,33 @@ export default function ResultsView() {
       <div className="glass-panel p-6 rounded-xl space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider font-mono">
-            PR-AUC, F1-Score, and Recall Progression
+            Validation Metric Score Progression
           </h3>
           <span className="text-xs font-mono text-emerald-400 bg-emerald-950 px-3 py-1 rounded border border-emerald-800">
-            Peak PR-AUC: 0.884 (+24.1% gain)
+            Best Metric: {activeProject.bestMetric}
           </span>
         </div>
 
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0.5, 1.0]} stroke="#94a3b8" tick={{ fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-              <Bar dataKey="PR_AUC" name="PR-AUC (Primary)" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="F1" name="F1 Score" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Recall" name="Fraud Recall" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {chartData.length > 0 ? (
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 1.0]} stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                <Bar dataKey="PrimaryMetric" name="Validation Metric" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="p-8 text-center text-xs text-slate-400 font-mono">
+            No result metrics logged yet for this project.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,107 +1,103 @@
-import React, { useState } from 'react';
-import Header from './components/Header';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-import DashboardView from './views/DashboardView';
-import NewResearchView from './views/NewResearchView';
-import WorkspaceView from './views/WorkspaceView';
-import ExperimentTreeView from './views/ExperimentTreeView';
-import ExperimentsView from './views/ExperimentsView';
-import DatasetAnalysisView from './views/DatasetAnalysisView';
-import ModelsView from './views/ModelsView';
-import ResultsView from './views/ResultsView';
-import ErrorAnalysisView from './views/ErrorAnalysisView';
-import LiteratureView from './views/LiteratureView';
-import ReportView from './views/ReportView';
-import SettingsView from './views/SettingsView';
-import { INITIAL_PROJECTS } from './mockData';
+import ResearchStartScreen from './components/ResearchStartScreen';
+import ResearchChatWorkspace from './components/ResearchChatWorkspace';
+import SettingsModal from './components/SettingsModal';
+import { fetchProjects, fetchProjectDetails, createResearchProject, fetchSettings } from './api';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
-  const [activeProject, setActiveProject] = useState(INITIAL_PROJECTS[0]);
-  const [activeProvider, setActiveProvider] = useState('OpenAI (gpt-4o)');
+  const [projects, setProjects] = useState([]);
+  const [activeProject, setActiveProject] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [dockerReady, setDockerReady] = useState(false);
+  const [llmConfigured, setLlmConfigured] = useState(false);
 
-  const handleStartResearch = (newResearch) => {
-    const created = {
-      id: `proj-${Date.now()}`,
-      name: newResearch.goal,
-      objective: newResearch.constraints || newResearch.goal,
-      datasetName: newResearch.datasetName,
-      status: 'IN_PROGRESS',
-      createdAt: new Date().toISOString(),
-      experimentsCount: 1,
-      bestMetric: 'Profiling...',
-      bestModel: newResearch.framework,
-      llmProvider: newResearch.llmProvider,
-      computeUsed: '0m / ' + newResearch.computeBudget + 'm'
-    };
+  const loadProjects = async () => {
+    const list = await fetchProjects();
+    setProjects(list);
+  };
 
-    setProjects([created, ...projects]);
-    setActiveProject(created);
-    setActiveProvider(newResearch.llmProvider);
-    setCurrentView('workspace');
+  const loadSysSettings = async () => {
+    const s = await fetchSettings();
+    setDockerReady(s.dockerAvailable || false);
+    setLlmConfigured(s.apiKeySet || false);
+  };
+
+  useEffect(() => {
+    loadProjects();
+    loadSysSettings();
+    const interval = setInterval(loadProjects, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync active project state
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    const interval = setInterval(async () => {
+      const updated = await fetchProjectDetails(activeProject.id);
+      if (updated) {
+        setActiveProject(updated);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [activeProject?.id]);
+
+  const handleStartResearch = async (formData) => {
+    setIsLaunching(true);
+    try {
+      const res = await createResearchProject(formData);
+      if (res.project) {
+        setActiveProject(res.project);
+        await loadProjects();
+      }
+    } catch (err) {
+      alert("Error launching research: " + err.message);
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+
+  const handleNewResearchClick = () => {
+    setActiveProject(null);
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans">
-      <Header 
-        currentView={currentView} 
-        activeProject={activeProject} 
-        activeProvider={activeProvider} 
+    <div className="flex h-screen bg-[#0B0F17] text-slate-100 font-sans overflow-hidden">
+      
+      {/* Sakana Chat Style Left Sidebar */}
+      <Sidebar
+        projects={projects}
+        activeProject={activeProject}
+        setActiveProject={setActiveProject}
+        onNewResearch={handleNewResearchClick}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        dockerReady={dockerReady}
+        llmConfigured={llmConfigured}
       />
 
-      <div className="flex flex-1">
-        <Sidebar 
-          currentView={currentView} 
-          setCurrentView={setCurrentView} 
-        />
+      {/* Main Screen: Research Start Screen or Active Workspace */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0B0F17]">
+        {!activeProject ? (
+          <ResearchStartScreen
+            onStartResearch={handleStartResearch}
+            isLaunching={isLaunching}
+          />
+        ) : (
+          <ResearchChatWorkspace
+            activeProject={activeProject}
+            onNewResearch={handleNewResearchClick}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+        )}
+      </main>
 
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-[#0B0F19] via-[#0F172A]/40 to-[#0B0F19] min-h-[calc(100vh-4rem)] pb-16">
-          {currentView === 'dashboard' && (
-            <DashboardView 
-              setCurrentView={setCurrentView} 
-              projects={projects} 
-              activeProject={activeProject} 
-            />
-          )}
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
 
-          {currentView === 'new_research' && (
-            <NewResearchView 
-              onStartResearch={handleStartResearch} 
-            />
-          )}
-
-          {currentView === 'workspace' && (
-            <WorkspaceView 
-              activeProject={activeProject} 
-              setCurrentView={setCurrentView} 
-            />
-          )}
-
-          {currentView === 'tree' && <ExperimentTreeView />}
-
-          {currentView === 'experiments' && <ExperimentsView />}
-
-          {currentView === 'dataset_analysis' && <DatasetAnalysisView />}
-
-          {currentView === 'models' && <ModelsView />}
-
-          {currentView === 'results' && <ResultsView />}
-
-          {currentView === 'error_analysis' && <ErrorAnalysisView />}
-
-          {currentView === 'literature' && <LiteratureView />}
-
-          {currentView === 'report' && <ReportView />}
-
-          {currentView === 'settings' && (
-            <SettingsView 
-              activeProvider={activeProvider} 
-              setActiveProvider={setActiveProvider} 
-            />
-          )}
-        </main>
-      </div>
     </div>
   );
 }

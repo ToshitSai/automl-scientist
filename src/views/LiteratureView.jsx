@@ -1,8 +1,43 @@
-import React from 'react';
-import { BookOpen, ExternalLink, Sparkles, CheckCircle2 } from 'lucide-react';
-import { INITIAL_LITERATURE } from '../mockData';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
+import { fetchProjectLiterature } from '../api';
 
-export default function LiteratureView() {
+export default function LiteratureView({ activeProject }) {
+  const [papers, setPapers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    setLoading(true);
+    fetchProjectLiterature(activeProject.id).then((data) => {
+      setPapers(data);
+      setLoading(false);
+    });
+  }, [activeProject?.id]);
+
+  if (!activeProject) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200 font-mono">Not configured</h3>
+          <p className="text-xs text-slate-400">Select or start a research project to view retrieved literature papers.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-3 text-cyan-400 font-mono text-sm">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Searching Semantic Scholar literature database...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <div className="space-y-2">
@@ -14,44 +49,52 @@ export default function LiteratureView() {
           Automated Academic Literature & Citations
         </h2>
         <p className="text-slate-400 text-sm">
-          AutoML Scientist searches Semantic Scholar to ingest related methodologies, prevent redundant work, and ground generated hypotheses in verified ML literature.
+          AutoML Scientist searches Semantic Scholar to ingest related methodologies and ground generated hypotheses in verified ML literature.
         </p>
       </div>
 
       {/* Paper Cards */}
-      <div className="space-y-4">
-        {INITIAL_LITERATURE.map((paper) => (
-          <div key={paper.paperId} className="glass-panel p-6 rounded-xl border-slate-800 space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider block">
-                  Semantic Scholar Paper ID: {paper.paperId} • Published {paper.year}
-                </span>
-                <h3 className="font-bold text-base text-white mt-1">{paper.title}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Authors: {paper.authors}</p>
+      {papers.length > 0 ? (
+        <div className="space-y-4">
+          {papers.map((paper) => (
+            <div key={paper.paperId} className="glass-panel p-6 rounded-xl border-slate-800 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider block">
+                    Semantic Scholar ID: {paper.paperId} • Published {paper.year}
+                  </span>
+                  <h3 className="font-bold text-base text-white mt-1">{paper.title}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Authors: {paper.authors}</p>
+                </div>
+                {paper.url && (
+                  <a
+                    href={paper.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-cyan-300 border border-slate-700 flex items-center space-x-1 shrink-0"
+                  >
+                    <span>View Paper</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
               </div>
-              <a
-                href={paper.url}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-cyan-300 border border-slate-700 flex items-center space-x-1 shrink-0"
-              >
-                <span>View Paper</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
 
-            <p className="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 font-sans leading-relaxed">
-              Abstract: &quot;{paper.abstract}&quot;
-            </p>
+              <p className="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 font-sans leading-relaxed">
+                Abstract: &quot;{paper.abstract}&quot;
+              </p>
 
-            <div className="flex items-center space-x-2 text-xs text-emerald-400 font-mono">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Relevance to Current Problem: {paper.relevance}</span>
+              <div className="flex items-center space-x-2 text-xs text-emerald-400 font-mono">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Relevance to Current Problem: {paper.relevance}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="glass-panel p-8 rounded-xl text-center space-y-2">
+          <p className="text-xs text-slate-400 font-mono">No literature papers retrieved yet for this objective.</p>
+        </div>
+      )}
     </div>
   );
 }

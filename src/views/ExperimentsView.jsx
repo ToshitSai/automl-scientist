@@ -1,25 +1,47 @@
-import React, { useState } from 'react';
-import { FlaskConical, Search, Filter, ShieldCheck, CheckCircle2, ArrowUpDown } from 'lucide-react';
-import { INITIAL_TREE_NODES } from '../mockData';
+import React, { useState, useEffect } from 'react';
+import { FlaskConical, Search, ShieldCheck, Loader2 } from 'lucide-react';
+import { fetchProjectTree } from '../api';
 
-export default function ExperimentsView() {
+export default function ExperimentsView({ activeProject }) {
   const [search, setSearch] = useState('');
+  const [treeNodes, setTreeNodes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const experiments = [
-    { id: 'EXP-001', name: 'Baseline XGBoost Raw', model: 'XGBoost', metric: 'PR-AUC: 0.841', status: 'SUCCESS', runtime: '12.1s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-002', name: 'Logistic Regression Scale', model: 'LogisticRegression', metric: 'PR-AUC: 0.712', status: 'SUCCESS', runtime: '2.4s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-003', name: 'Random Forest 200 Trees', model: 'RandomForest', metric: 'PR-AUC: 0.825', status: 'SUCCESS', runtime: '18.6s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-004', name: 'Class Weighting (scale_pos_weight)', model: 'XGBoost', metric: 'PR-AUC: 0.862', status: 'IMPROVED', runtime: '14.5s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-005', name: 'Threshold Optimization (0.34)', model: 'XGBoost', metric: 'PR-AUC: 0.884', status: 'BEST', runtime: '21.0s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-006', name: 'SMOTE Oversampling (k=5)', model: 'XGBoost + SMOTE', metric: 'PR-AUC: 0.849', status: 'PLATEAUED', runtime: '38.2s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-007', name: 'Isolation Forest Meta Feature', model: 'XGBoost + IsoForest', metric: 'PR-AUC: 0.858', status: 'SUCCESS', runtime: '28.7s', sandbox: 'Docker Isolated' },
-    { id: 'EXP-008', name: 'Neural Net 3-Layer MLP', model: 'PyTorch MLP', metric: 'PR-AUC: 0.793', status: 'SUCCESS', runtime: '45.2s', sandbox: 'Docker Isolated' }
-  ];
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    setLoading(true);
+    fetchProjectTree(activeProject.id).then((data) => {
+      setTreeNodes(data);
+      setLoading(false);
+    });
+  }, [activeProject?.id]);
 
-  const filtered = experiments.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.model.toLowerCase().includes(search.toLowerCase()) ||
-    e.id.toLowerCase().includes(search.toLowerCase())
+  if (!activeProject) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <FlaskConical className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200 font-mono">Not configured</h3>
+          <p className="text-xs text-slate-400">Select or start a research project to view experiment records.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-3 text-cyan-400 font-mono text-sm">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Fetching experiment history...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const filtered = treeNodes.filter((e) =>
+    (e.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    (e.id || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -57,7 +79,7 @@ export default function ExperimentsView() {
               <tr>
                 <th className="p-4">Exp ID</th>
                 <th className="p-4">Experiment Title</th>
-                <th className="p-4">Model Architecture</th>
+                <th className="p-4">Hypothesis</th>
                 <th className="p-4">Primary Metric</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Runtime</th>
@@ -65,34 +87,42 @@ export default function ExperimentsView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {filtered.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="p-4 font-mono font-bold text-cyan-400">{exp.id}</td>
-                  <td className="p-4 font-medium text-slate-200">{exp.name}</td>
-                  <td className="p-4 font-mono text-slate-300">{exp.model}</td>
-                  <td className="p-4 font-mono font-bold text-emerald-400">{exp.metric}</td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border ${
-                        exp.status === 'BEST'
-                          ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                          : exp.status === 'IMPROVED'
-                          ? 'bg-cyan-950 text-cyan-300 border-cyan-800'
-                          : exp.status === 'PLATEAUED'
-                          ? 'bg-amber-950 text-amber-300 border-amber-800'
-                          : 'bg-slate-900 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      {exp.status}
-                    </span>
-                  </td>
-                  <td className="p-4 font-mono text-slate-400">{exp.runtime}</td>
-                  <td className="p-4 flex items-center space-x-1.5 text-emerald-400">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span className="font-mono text-[11px]">{exp.sandbox}</span>
+              {filtered.length > 0 ? (
+                filtered.map((exp) => (
+                  <tr key={exp.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-4 font-mono font-bold text-cyan-400">{exp.id}</td>
+                    <td className="p-4 font-medium text-slate-200">{exp.title}</td>
+                    <td className="p-4 font-mono text-slate-400 truncate max-w-xs">{exp.hypothesis}</td>
+                    <td className="p-4 font-mono font-bold text-emerald-400">{exp.metricName}: {exp.metricValue}</td>
+                    <td className="p-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border ${
+                          exp.status === 'BEST'
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                            : exp.status === 'IMPROVED'
+                            ? 'bg-cyan-950 text-cyan-300 border-cyan-800'
+                            : exp.status === 'PLATEAUED'
+                            ? 'bg-amber-950 text-amber-300 border-amber-800'
+                            : 'bg-slate-900 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        {exp.status}
+                      </span>
+                    </td>
+                    <td className="p-4 font-mono text-slate-400">{exp.executionTime}</td>
+                    <td className="p-4 flex items-center space-x-1.5 text-emerald-400">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span className="font-mono text-[11px]">Process Sandbox</span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="p-6 text-center text-slate-500 italic">
+                    No matching experiment records found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

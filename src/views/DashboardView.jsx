@@ -5,11 +5,9 @@ import {
   GitFork, 
   TrendingUp, 
   ShieldCheck, 
-  Clock, 
   Sparkles, 
   ChevronRight,
   Database,
-  Cpu,
   BarChart2
 } from 'lucide-react';
 
@@ -29,12 +27,12 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
               Welcome to AutoML Scientist
             </h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Define your machine learning objective. AutoML Scientist autonomously analyzes your dataset, discovers literature, formulates hypotheses, executes isolated sandbox experiments, and generates comprehensive research reports.
+              Define your machine learning objective. AutoML Scientist autonomously analyzes your dataset, discovers literature, formulates hypotheses, executes sandboxed experiments, and generates comprehensive research reports.
             </p>
           </div>
           <button
             onClick={() => setCurrentView('new_research')}
-            className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-lg shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5"
+            className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-lg shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Start New Research</span>
@@ -53,8 +51,8 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
             {projects.length}
           </div>
           <p className="text-xs text-slate-400 flex items-center space-x-1">
-            <span className="text-emerald-400 font-semibold">+1 active</span>
-            <span>in current run</span>
+            <span className="text-emerald-400 font-semibold">{projects.filter(p => p.status === 'IN_PROGRESS').length} active</span>
+            <span>in system</span>
           </p>
         </div>
 
@@ -64,11 +62,10 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
             <GitFork className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl font-bold text-white">
-            12
+            {activeProject ? activeProject.experimentsCount : 0}
           </div>
           <p className="text-xs text-slate-400 flex items-center space-x-1">
-            <span className="text-purple-400 font-semibold">5 nodes</span>
-            <span>in active branch</span>
+            <span>in active project</span>
           </p>
         </div>
 
@@ -77,32 +74,31 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
             <span className="text-xs font-medium uppercase tracking-wider">Best Metric Score</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400">
-            PR-AUC 0.884
+          <div className="text-xl font-bold text-emerald-400 truncate">
+            {activeProject ? activeProject.bestMetric : 'Not calculated'}
           </div>
           <p className="text-xs text-slate-400 flex items-center space-x-1">
-            <span className="text-emerald-400 font-semibold">+24.1% improvement</span>
-            <span>over baseline</span>
+            <span>validation score</span>
           </p>
         </div>
 
         <div className="glass-panel p-5 rounded-xl space-y-2 border-slate-800/80">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Docker Sandbox</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Sandbox Engine</span>
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-white flex items-center space-x-2">
-            <span>Isolated</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          <div className="text-sm font-bold text-white flex items-center space-x-2">
+            <span>Active</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
-          <p className="text-xs text-slate-400">
-            RAM: 4GB Limit • Timeout: 300s
+          <p className="text-xs text-slate-400 truncate">
+            Process Sandbox Isolation
           </p>
         </div>
       </div>
 
       {/* Active Research Objective Card */}
-      {activeProject && (
+      {activeProject ? (
         <div className="glass-panel p-6 rounded-xl border border-cyan-500/30 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -114,7 +110,7 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
             </div>
             <button
               onClick={() => setCurrentView('workspace')}
-              className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center space-x-1"
+              className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center space-x-1 cursor-pointer"
             >
               <span>View Live Workspace</span>
               <ChevronRight className="w-4 h-4" />
@@ -144,6 +140,16 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
             </div>
           </div>
         </div>
+      ) : (
+        <div className="glass-panel p-8 rounded-xl border border-slate-800 text-center space-y-4">
+          <p className="text-sm text-slate-400 font-mono">Not configured / No research project selected</p>
+          <button
+            onClick={() => setCurrentView('new_research')}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-xs rounded-lg cursor-pointer"
+          >
+            Create Your First Research Objective
+          </button>
+        </div>
       )}
 
       {/* Quick Access Grid */}
@@ -157,7 +163,7 @@ export default function DashboardView({ setCurrentView, projects, activeProject 
           </div>
           <h4 className="text-base font-bold text-white">Dataset Analysis Report</h4>
           <p className="text-xs text-slate-400">
-            View automatic profiling results for 284,807 records: class imbalance warnings, feature skewness, and metric recommendations.
+            View real statistical profiling results: row counts, missing values, class distributions, and recommended evaluation metrics.
           </p>
         </div>
 

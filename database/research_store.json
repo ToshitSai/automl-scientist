@@ -1,0 +1,1462 @@
+{
+  "projects": {
+    "proj-7e129e": {
+      "id": "proj-7e129e",
+      "name": "Research: Predict credit fraud using tabular ",
+      "objective": "Predict credit fraud using tabular ML",
+      "datasetName": "proj-7e129e_sample.csv",
+      "status": "COMPLETED",
+      "createdAt": "2026-09-18T15:51:22.446859+00:00",
+      "experimentsCount": 1,
+      "bestMetric": "ACCURACY: 0.99",
+      "bestModel": "Logistic Regression",
+      "llmProvider": "Heuristic / Rule-based",
+      "computeUsed": "0.1 mins / 60 mins",
+      "activeAgent": "FINISHED",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-18T15:51:22.449175+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Searching literature for objective: 'Predict credit fraud using tabular ML'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:23.375385+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at proj-7e129e_sample.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:23.397861+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Training real baseline models (Logistic Regression, Random Forest, XGBoost, MLP)...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.811468+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Generating testable research hypothesis using LLM...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.811964+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing experiment code for 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.813150+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Executing sandboxed experiment in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.902810+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on prediction discrepancies...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.908577+00:00",
+          "agent": "REPORT_AGENT",
+          "message": "Generating research report based on experiment results...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T15:51:25.909738+00:00",
+          "agent": "RESEARCH_ORCHESTRATOR",
+          "message": "Research pipeline completed successfully.",
+          "status": "COMPLETED"
+        }
+      ]
+    },
+    "proj-9b1cd0": {
+      "id": "proj-9b1cd0",
+      "name": "Research: Optimize churn classification with ",
+      "objective": "Optimize churn classification with regularized boosting",
+      "datasetName": "proj-9b1cd0_default.csv",
+      "status": "PAUSED",
+      "createdAt": "2026-09-18T16:09:30.585329+00:00",
+      "experimentsCount": 3,
+      "maxExperiments": 3,
+      "bestMetric": "ACCURACY: 0.943",
+      "bestModel": "Logistic Regression",
+      "llmProvider": "Heuristic / Rule-based",
+      "budgetMins": 15,
+      "computeUsed": "0.1 mins / 15 mins",
+      "activeAgent": "FINISHED",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-18T16:09:30.587715+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating research question for objective: 'Optimize churn classification with regularized boosting'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:31.078675+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at proj-9b1cd0_default.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:31.095134+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Training baseline models (Logistic Regression, Random Forest, XGBoost, MLP)...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.073478+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #1 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.074667+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #1: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.076331+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #1 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.173089+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #1 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.179187+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #2 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.180833+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #2: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.183573+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #2 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.258700+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #2 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.264798+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #3 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.265710+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #3: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.267142+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #3 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.339710+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #3 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.345345+00:00",
+          "agent": "REPORT_AGENT",
+          "message": "Generating scientific Markdown research report...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:09:34.347096+00:00",
+          "agent": "RESEARCH_ORCHESTRATOR",
+          "message": "Autonomous research pipeline completed successfully.",
+          "status": "COMPLETED"
+        }
+      ],
+      "controlSignal": "PAUSE"
+    },
+    "proj-3fbf23": {
+      "id": "proj-3fbf23",
+      "name": "Research: Predict fraud with bootstrap confid",
+      "objective": "Predict fraud with bootstrap confidence bounds",
+      "datasetName": "proj-3fbf23_default.csv",
+      "status": "COMPLETED",
+      "createdAt": "2026-09-18T16:40:06.204964+00:00",
+      "experimentsCount": 2,
+      "maxExperiments": 2,
+      "bestMetric": "ACCURACY: 0.943",
+      "bestModel": "Logistic Regression",
+      "llmProvider": "Heuristic / Rule-based",
+      "budgetMins": 15,
+      "computeUsed": "0.0 mins / 15 mins",
+      "activeAgent": "FINISHED",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-18T16:40:06.207858+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating research question for objective: 'Predict fraud with bootstrap confidence bounds'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:07.222809+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at proj-3fbf23_default.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:07.261118+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Training baseline models (Logistic Regression, Random Forest, XGBoost, MLP)...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.822076+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #1 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.823079+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #1: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.824880+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #1 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.898356+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #1 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.909304+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #2 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.910351+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #2: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.912285+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #2 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.981634+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #2 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.991468+00:00",
+          "agent": "REPORT_AGENT",
+          "message": "Generating scientific Markdown research report...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T16:40:08.993935+00:00",
+          "agent": "RESEARCH_ORCHESTRATOR",
+          "message": "Autonomous research pipeline completed successfully.",
+          "status": "COMPLETED"
+        }
+      ],
+      "controlSignal": "RUN"
+    },
+    "test-phase1-run": {
+      "id": "test-phase1-run",
+      "name": "Test Phase 1 Single Experiment",
+      "objective": "Improve fraud classification metrics using feature engineering and tree regularization.",
+      "datasetName": "fraud_small.csv",
+      "status": "COMPLETED",
+      "createdAt": "2026-09-18T18:30:03.165597+00:00",
+      "experimentsCount": 1,
+      "maxExperiments": 1,
+      "bestMetric": "N/A",
+      "bestModel": "Not trained",
+      "llmProvider": "Standard LLM",
+      "budgetMins": 15,
+      "computeUsed": "0 mins / 15 mins",
+      "activeAgent": "INITIALIZING",
+      "agentLogs": [],
+      "controlSignal": "RUN"
+    },
+    "proj-7f2c4e": {
+      "id": "proj-7f2c4e",
+      "name": "Research: Test error handling",
+      "objective": "Test error handling",
+      "datasetName": "credit_card_fraud.csv",
+      "status": "IN_PROGRESS",
+      "createdAt": "2026-09-18T17:33:07.187959+00:00",
+      "experimentsCount": 0,
+      "maxExperiments": 5,
+      "bestMetric": "N/A",
+      "bestModel": "Not trained",
+      "llmProvider": "Heuristic / Rule-based",
+      "budgetMins": 60,
+      "computeUsed": "0 mins / 60 mins",
+      "activeAgent": "RESEARCH_AGENT",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-18T17:33:07.191393+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating research question for objective: 'Test error handling'...",
+          "status": "IN_PROGRESS"
+        }
+      ],
+      "controlSignal": "RUN"
+    },
+    "test-run-1": {
+      "id": "test-run-1",
+      "name": "Test Obj",
+      "objective": "Improve fraud detection",
+      "datasetName": "credit_card_fraud.csv",
+      "status": "FAILED",
+      "createdAt": "2026-09-18T18:32:11.391372+00:00",
+      "experimentsCount": 0,
+      "maxExperiments": 5,
+      "bestMetric": "N/A",
+      "bestModel": "Not trained",
+      "llmProvider": "Heuristic",
+      "budgetMins": 60,
+      "computeUsed": "0 mins / 60 mins",
+      "activeAgent": "ERROR",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-18T18:32:11.395218+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating research question & literature search for: 'Improve fraud detection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T18:32:12.011014+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Literature search completed. Found 2 papers.",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-18T18:32:12.012808+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at test.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-18T18:32:12.014756+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Dataset analysis error: Dataset file not found at uploaded_datasets/test.csv",
+          "status": "FAILED"
+        }
+      ],
+      "controlSignal": "RUN"
+    }
+  },
+  "datasets": {
+    "proj-7e129e": {
+      "filename": "proj-7e129e_sample.csv",
+      "rowCount": 1000,
+      "columnCount": 11,
+      "fileSize": "0.19 MB",
+      "targetCandidate": "Target_Class",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 831,
+          "percentage": 83.1
+        },
+        {
+          "label": "1",
+          "count": 169,
+          "percentage": 16.9
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 11,
+      "categoricalColumns": 0,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "proj-9b1cd0": {
+      "filename": "proj-9b1cd0_default.csv",
+      "rowCount": 1500,
+      "columnCount": 6,
+      "fileSize": "0.13 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 1416,
+          "percentage": 94.4
+        },
+        {
+          "label": "1",
+          "count": 84,
+          "percentage": 5.6
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 5,
+      "categoricalColumns": 1,
+      "datetimeColumns": 0,
+      "detectedIssues": [
+        {
+          "severity": "MEDIUM",
+          "title": "Feature Skewness",
+          "desc": "1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness."
+        }
+      ],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "proj-3fbf23": {
+      "filename": "proj-3fbf23_default.csv",
+      "rowCount": 1500,
+      "columnCount": 6,
+      "fileSize": "0.13 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 1416,
+          "percentage": 94.4
+        },
+        {
+          "label": "1",
+          "count": 84,
+          "percentage": 5.6
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 5,
+      "categoricalColumns": 1,
+      "datetimeColumns": 0,
+      "detectedIssues": [
+        {
+          "severity": "MEDIUM",
+          "title": "Feature Skewness",
+          "desc": "1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness."
+        }
+      ],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "test-phase1-run": {
+      "filename": "fraud_small.csv",
+      "rowCount": 300,
+      "columnCount": 5,
+      "fileSize": "0.02 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 274,
+          "percentage": 91.33
+        },
+        {
+          "label": "1",
+          "count": 26,
+          "percentage": 8.67
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 5,
+      "categoricalColumns": 0,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "test-validation-01": {
+      "filename": "test_fraud.csv",
+      "rowCount": 200,
+      "columnCount": 6,
+      "fileSize": "0.01 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 184,
+          "percentage": 92.0
+        },
+        {
+          "label": "1",
+          "count": 16,
+          "percentage": 8.0
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 5,
+      "categoricalColumns": 1,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    }
+  },
+  "baselines": {
+    "proj-7e129e": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.99,
+          "f1": 0.99,
+          "precision": 0.99,
+          "recall": 0.99,
+          "pr_auc": 0.999,
+          "roc_auc": 1.0
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.945,
+          "f1": 0.942,
+          "precision": 0.946,
+          "recall": 0.945,
+          "pr_auc": 0.937,
+          "roc_auc": 0.987
+        },
+        "trainingTime": "0.12s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.965,
+          "f1": 0.965,
+          "precision": 0.965,
+          "recall": 0.965,
+          "pr_auc": 0.968,
+          "roc_auc": 0.993
+        },
+        "trainingTime": "1.26s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.955,
+          "f1": 0.954,
+          "precision": 0.954,
+          "recall": 0.955,
+          "pr_auc": 0.972,
+          "roc_auc": 0.994
+        },
+        "trainingTime": "0.31s",
+        "status": "COMPLETED"
+      }
+    ],
+    "proj-9b1cd0": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.113,
+          "roc_auc": 0.499
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.078,
+          "roc_auc": 0.529
+        },
+        "trainingTime": "0.18s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.052,
+          "roc_auc": 0.45
+        },
+        "trainingTime": "1.33s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.051,
+          "roc_auc": 0.486
+        },
+        "trainingTime": "0.64s",
+        "status": "COMPLETED"
+      }
+    ],
+    "proj-3fbf23": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.113,
+          "roc_auc": 0.499
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.078,
+          "roc_auc": 0.529
+        },
+        "trainingTime": "0.13s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.052,
+          "roc_auc": 0.45
+        },
+        "trainingTime": "0.78s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.943,
+          "f1": 0.916,
+          "precision": 0.89,
+          "recall": 0.943,
+          "pr_auc": 0.051,
+          "roc_auc": 0.486
+        },
+        "trainingTime": "0.48s",
+        "status": "COMPLETED"
+      }
+    ],
+    "test-phase1-run": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.917,
+          "f1": 0.877,
+          "precision": 0.84,
+          "recall": 0.917,
+          "pr_auc": 0.101,
+          "roc_auc": 0.513
+        },
+        "trainingTime": "0.02s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.917,
+          "f1": 0.877,
+          "precision": 0.84,
+          "recall": 0.917,
+          "pr_auc": 0.154,
+          "roc_auc": 0.68
+        },
+        "trainingTime": "0.35s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.868,
+          "precision": 0.839,
+          "recall": 0.9,
+          "pr_auc": 0.082,
+          "roc_auc": 0.509
+        },
+        "trainingTime": "2.04s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.917,
+          "f1": 0.877,
+          "precision": 0.84,
+          "recall": 0.917,
+          "pr_auc": 0.324,
+          "roc_auc": 0.655
+        },
+        "trainingTime": "0.53s",
+        "status": "COMPLETED"
+      }
+    ],
+    "test-validation-01": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.925,
+          "f1": 0.889,
+          "precision": 0.856,
+          "recall": 0.925,
+          "pr_auc": 0.18,
+          "roc_auc": 0.775
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.925,
+          "f1": 0.889,
+          "precision": 0.856,
+          "recall": 0.925,
+          "pr_auc": 0.373,
+          "roc_auc": 0.441
+        },
+        "trainingTime": "0.11s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.925,
+          "f1": 0.918,
+          "precision": 0.914,
+          "recall": 0.925,
+          "pr_auc": 0.124,
+          "roc_auc": 0.441
+        },
+        "trainingTime": "1.55s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.925,
+          "f1": 0.889,
+          "precision": 0.856,
+          "recall": 0.925,
+          "pr_auc": 0.148,
+          "roc_auc": 0.658
+        },
+        "trainingTime": "0.1s",
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  "experiments": {},
+  "tree_nodes": {
+    "proj-7e129e": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `proj-7e129e_sample.csv` using default models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.99,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.99,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.08s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpl4pni23t\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      }
+    ],
+    "proj-9b1cd0": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `proj-9b1cd0_default.csv` using default models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2",
+          "node-exp-3"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.09s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpdd80sqmg\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.07s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpu9xnbwcq\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-3",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.07s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpj4zg7cy4\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      }
+    ],
+    "proj-3fbf23": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `proj-3fbf23_default.csv` using default models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.07s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpvkcz5zhz\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.943,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.07s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpcht743ke\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n",
+        "children": []
+      }
+    ],
+    "test-phase1-run": [
+      {
+        "id": "node-1",
+        "parentId": null,
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.",
+        "status": "COMPLETED",
+        "metricName": "F1",
+        "metricValue": 0.0,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "0.1s",
+        "stdout": "",
+        "stderr": "  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmphaa9qqj2\\experiment.py\", line 3\n    from sklearn.ensemble import GradientBoostingClassifier if \"classification\" == \"classification\" else GradientBoostingRegressor\n                                                            ^^\nSyntaxError: invalid syntax\n"
+      }
+    ],
+    "test-validation-01": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `test_fraud.csv` using standard benchmark models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.925,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.925,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "2.1s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmp2hku5g3z\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets\\\\test_fraud.csv'\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+        "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.925,
+        "hyperparams": "n_estimators=200, learning_rate=0.02, max_depth=4",
+        "executionTime": "1.97s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpzylw0xda\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets\\\\test_fraud.csv'\n",
+        "children": []
+      }
+    ]
+  },
+  "error_analyses": {
+    "proj-7e129e": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 2,
+      "topFailingFeatures": [
+        {
+          "feature": "V2",
+          "importanceScore": 0.13,
+          "message": "Feature 'V2' exhibits strong correlation (0.13) with prediction errors."
+        },
+        {
+          "feature": "V4",
+          "importanceScore": 0.09,
+          "message": "Feature 'V4' exhibits strong correlation (0.09) with prediction errors."
+        },
+        {
+          "feature": "V9",
+          "importanceScore": 0.09,
+          "message": "Feature 'V9' exhibits strong correlation (0.09) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "V1 (Low Range Slice)",
+          "fraudCount": 66,
+          "recall": "100.0%",
+          "note": "Accuracy on slice is 100.0% across 66 samples."
+        },
+        {
+          "slice": "V1 (Mid Range Slice)",
+          "fraudCount": 66,
+          "recall": "97.0%",
+          "note": "Accuracy on slice is 97.0% across 66 samples."
+        },
+        {
+          "slice": "V1 (High Range Slice)",
+          "fraudCount": 68,
+          "recall": "100.0%",
+          "note": "Accuracy on slice is 100.0% across 68 samples."
+        }
+      ],
+      "failureDiagnosis": "Analysis identified 0 false positives and 2 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'V2'. Feature interaction terms or decision threshold recalibration recommended."
+    },
+    "proj-9b1cd0": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 17,
+      "topFailingFeatures": [
+        {
+          "feature": "transaction_id",
+          "importanceScore": 0.09,
+          "message": "Feature 'transaction_id' exhibits strong correlation (0.09) with prediction errors."
+        },
+        {
+          "feature": "amount",
+          "importanceScore": 0.04,
+          "message": "Feature 'amount' exhibits strong correlation (0.04) with prediction errors."
+        },
+        {
+          "feature": "v2",
+          "importanceScore": 0.03,
+          "message": "Feature 'v2' exhibits strong correlation (0.03) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "transaction_id (Low Range Slice)",
+          "fraudCount": 99,
+          "recall": "97.0%",
+          "note": "Accuracy on slice is 97.0% across 99 samples."
+        },
+        {
+          "slice": "transaction_id (Mid Range Slice)",
+          "fraudCount": 99,
+          "recall": "93.9%",
+          "note": "Accuracy on slice is 93.9% across 99 samples."
+        },
+        {
+          "slice": "transaction_id (High Range Slice)",
+          "fraudCount": 102,
+          "recall": "92.2%",
+          "note": "Accuracy on slice is 92.2% across 102 samples."
+        }
+      ],
+      "failureDiagnosis": "Analysis identified 0 false positives and 17 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended."
+    },
+    "proj-3fbf23": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 17,
+      "topFailingFeatures": [
+        {
+          "feature": "transaction_id",
+          "importanceScore": 0.09,
+          "message": "Feature 'transaction_id' exhibits strong correlation (0.09) with prediction errors."
+        },
+        {
+          "feature": "amount",
+          "importanceScore": 0.04,
+          "message": "Feature 'amount' exhibits strong correlation (0.04) with prediction errors."
+        },
+        {
+          "feature": "v2",
+          "importanceScore": 0.03,
+          "message": "Feature 'v2' exhibits strong correlation (0.03) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "transaction_id (Low Range Slice)",
+          "fraudCount": 99,
+          "recall": "97.0%",
+          "note": "Accuracy on slice is 97.0% across 99 samples."
+        },
+        {
+          "slice": "transaction_id (Mid Range Slice)",
+          "fraudCount": 99,
+          "recall": "93.9%",
+          "note": "Accuracy on slice is 93.9% across 99 samples."
+        },
+        {
+          "slice": "transaction_id (High Range Slice)",
+          "fraudCount": 102,
+          "recall": "92.2%",
+          "note": "Accuracy on slice is 92.2% across 102 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.9425,
+        "ci_lower": 0.9167,
+        "ci_upper": 0.9667
+      },
+      "failureDiagnosis": "Analysis identified 0 false positives and 17 false negatives. Bootstrap 95% CI for accuracy: [0.9167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended."
+    },
+    "test-phase1-run": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 5,
+      "topFailingFeatures": [
+        {
+          "feature": "amount",
+          "importanceScore": 0.15,
+          "message": "Feature 'amount' exhibits strong correlation (0.15) with prediction errors."
+        },
+        {
+          "feature": "v1",
+          "importanceScore": 0.11,
+          "message": "Feature 'v1' exhibits strong correlation (0.11) with prediction errors."
+        },
+        {
+          "feature": "v3",
+          "importanceScore": 0.03,
+          "message": "Feature 'v3' exhibits strong correlation (0.03) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "amount (Low Range Slice)",
+          "fraudCount": 20,
+          "recall": "100.0%",
+          "note": "Accuracy on slice is 100.0% across 20 samples."
+        },
+        {
+          "slice": "amount (Mid Range Slice)",
+          "fraudCount": 19,
+          "recall": "89.5%",
+          "note": "Accuracy on slice is 89.5% across 19 samples."
+        },
+        {
+          "slice": "amount (High Range Slice)",
+          "fraudCount": 21,
+          "recall": "85.7%",
+          "note": "Accuracy on slice is 85.7% across 21 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.9173,
+        "ci_lower": 0.85,
+        "ci_upper": 0.9833
+      },
+      "failureDiagnosis": "Analysis identified 0 false positives and 5 false negatives. Bootstrap 95% CI for accuracy: [0.85 - 0.9833]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+    },
+    "test-validation-01": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 3,
+      "topFailingFeatures": [
+        {
+          "feature": "v2",
+          "importanceScore": 0.37,
+          "message": "Feature 'v2' exhibits strong correlation (0.37) with prediction errors."
+        },
+        {
+          "feature": "v1",
+          "importanceScore": 0.15,
+          "message": "Feature 'v1' exhibits strong correlation (0.15) with prediction errors."
+        },
+        {
+          "feature": "amount",
+          "importanceScore": 0.13,
+          "message": "Feature 'amount' exhibits strong correlation (0.13) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "tx_id (Low Range Slice)",
+          "fraudCount": 13,
+          "recall": "84.6%",
+          "note": "Accuracy on slice is 84.6% across 13 samples."
+        },
+        {
+          "slice": "tx_id (Mid Range Slice)",
+          "fraudCount": 13,
+          "recall": "100.0%",
+          "note": "Accuracy on slice is 100.0% across 13 samples."
+        },
+        {
+          "slice": "tx_id (High Range Slice)",
+          "fraudCount": 14,
+          "recall": "92.9%",
+          "note": "Accuracy on slice is 92.9% across 14 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.9256,
+        "ci_lower": 0.8494,
+        "ci_upper": 1.0
+      },
+      "failureDiagnosis": "Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+    }
+  },
+  "literature": {
+    "proj-7e129e": [
+      {
+        "paperId": "s2-984102",
+        "title": "Empirical Machine Learning Strategies for Predict credit fraud using tabular ML",
+        "authors": "A. Bhattacharyya, S. Ghosh, H. Su",
+        "year": 2024,
+        "url": "https://www.semanticscholar.org/paper/example-1",
+        "abstract": "Comparative study evaluating gradient boosted decision trees and focal loss adaptations for domain objective: 'Predict credit fraud using tabular ML'.",
+        "relevance": "High - Direct domain overlap with metric selection and model architecture."
+      },
+      {
+        "paperId": "s2-441092",
+        "title": "Optimizing Decision Boundaries in Tabular ML Pipelines",
+        "authors": "M. Chen, L. Wang, K. Patel",
+        "year": 2025,
+        "url": "https://www.semanticscholar.org/paper/example-2",
+        "abstract": "Proposes dynamic threshold recalibration combined with feature interaction terms for tabular machine learning pipelines.",
+        "relevance": "Medium - Informs hypothesis generation regarding feature engineering and hyperparameter tuning."
+      }
+    ],
+    "proj-9b1cd0": [
+      {
+        "paperId": "s2-984102",
+        "title": "Empirical Machine Learning Strategies for Optimize churn classification with regul",
+        "authors": "A. Bhattacharyya, S. Ghosh, H. Su",
+        "year": 2024,
+        "url": "https://www.semanticscholar.org/paper/example-1",
+        "abstract": "Comparative study evaluating gradient boosted decision trees and focal loss adaptations for domain objective: 'Optimize churn classification with regularized boosting'.",
+        "relevance": "High - Direct domain overlap with metric selection and model architecture."
+      },
+      {
+        "paperId": "s2-441092",
+        "title": "Optimizing Decision Boundaries in Tabular ML Pipelines",
+        "authors": "M. Chen, L. Wang, K. Patel",
+        "year": 2025,
+        "url": "https://www.semanticscholar.org/paper/example-2",
+        "abstract": "Proposes dynamic threshold recalibration combined with feature interaction terms for tabular machine learning pipelines.",
+        "relevance": "Medium - Informs hypothesis generation regarding feature engineering and hyperparameter tuning."
+      }
+    ],
+    "proj-3fbf23": [
+      {
+        "paperId": "s2-984102",
+        "title": "Empirical Machine Learning Strategies for Predict fraud with bootstrap confidence ",
+        "authors": "A. Bhattacharyya, S. Ghosh, H. Su",
+        "year": 2024,
+        "url": "https://www.semanticscholar.org/paper/example-1",
+        "abstract": "Comparative study evaluating gradient boosted decision trees and focal loss adaptations for domain objective: 'Predict fraud with bootstrap confidence bounds'.",
+        "relevance": "High - Direct domain overlap with metric selection and model architecture."
+      },
+      {
+        "paperId": "s2-441092",
+        "title": "Optimizing Decision Boundaries in Tabular ML Pipelines",
+        "authors": "M. Chen, L. Wang, K. Patel",
+        "year": 2025,
+        "url": "https://www.semanticscholar.org/paper/example-2",
+        "abstract": "Proposes dynamic threshold recalibration combined with feature interaction terms for tabular machine learning pipelines.",
+        "relevance": "Medium - Informs hypothesis generation regarding feature engineering and hyperparameter tuning."
+      }
+    ],
+    "test-run-1": [
+      {
+        "paperId": "s2-984102",
+        "title": "Empirical Machine Learning Strategies for Improve fraud detection",
+        "authors": "A. Bhattacharyya, S. Ghosh, H. Su",
+        "year": 2024,
+        "url": "https://www.semanticscholar.org/paper/example-1",
+        "abstract": "Comparative study evaluating gradient boosted decision trees and focal loss adaptations for domain objective: 'Improve fraud detection'.",
+        "relevance": "High - Direct domain overlap with metric selection and model architecture."
+      },
+      {
+        "paperId": "s2-441092",
+        "title": "Optimizing Decision Boundaries in Tabular ML Pipelines",
+        "authors": "M. Chen, L. Wang, K. Patel",
+        "year": 2025,
+        "url": "https://www.semanticscholar.org/paper/example-2",
+        "abstract": "Proposes dynamic threshold recalibration combined with feature interaction terms for tabular machine learning pipelines.",
+        "relevance": "Medium - Informs hypothesis generation regarding feature engineering and hyperparameter tuning."
+      }
+    ],
+    "test-validation-01": []
+  },
+  "reports": {
+    "proj-7e129e": "# Autonomous ML Research Report: Research: Predict credit fraud using tabular \n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Predict credit fraud using tabular ML\n- **Primary Dataset**: `proj-7e129e_sample.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.99`\n- **Total Experiments Completed**: 2\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-7e129e_sample.csv`\n- **Rows**: 1,000 | **Columns**: 11\n- **Target Column**: `Target_Class` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.99, F1: 0.99, PRECISION: 0.99, RECALL: 0.99, PR_AUC: 0.999, ROC_AUC: 1.0 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.945, F1: 0.942, PRECISION: 0.946, RECALL: 0.945, PR_AUC: 0.937, ROC_AUC: 0.987 | 0.12s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.965, F1: 0.965, PRECISION: 0.965, RECALL: 0.965, PR_AUC: 0.968, ROC_AUC: 0.993 | 1.26s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.955, F1: 0.954, PRECISION: 0.954, RECALL: 0.955, PR_AUC: 0.972, ROC_AUC: 0.994 | 0.31s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-7e129e_sample.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.99)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.99)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.08s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 2\n- **Diagnosis**: Analysis identified 0 false positives and 2 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'V2'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "proj-9b1cd0": "# Autonomous ML Research Report: Research: Optimize churn classification with \n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Optimize churn classification with regularized boosting\n- **Primary Dataset**: `proj-9b1cd0_default.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.943`\n- **Total Experiments Completed**: 4\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-9b1cd0_default.csv`\n- **Rows**: 1,500 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n- **[MEDIUM] Feature Skewness**: 1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness.\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.113, ROC_AUC: 0.499 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.078, ROC_AUC: 0.529 | 0.18s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.052, ROC_AUC: 0.45 | 1.33s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.051, ROC_AUC: 0.486 | 0.64s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-9b1cd0_default.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.943)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.09s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 17\n- **Diagnosis**: Analysis identified 0 false positives and 17 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "proj-3fbf23": "# Autonomous ML Research Report: Research: Predict fraud with bootstrap confid\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Predict fraud with bootstrap confidence bounds\n- **Primary Dataset**: `proj-3fbf23_default.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.943`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-3fbf23_default.csv`\n- **Rows**: 1,500 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n- **[MEDIUM] Feature Skewness**: 1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness.\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.113, ROC_AUC: 0.499 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.078, ROC_AUC: 0.529 | 0.13s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.052, ROC_AUC: 0.45 | 0.78s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.051, ROC_AUC: 0.486 | 0.48s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-3fbf23_default.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.943)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 17\n- **Diagnosis**: Analysis identified 0 false positives and 17 false negatives. Bootstrap 95% CI for accuracy: [0.9167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "test-phase1-run": "# Autonomous ML Research Report: Test Phase 1 Single Experiment\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud classification metrics using feature engineering and tree regularization.\n- **Primary Dataset**: `fraud_small.csv`\n- **Best Model Architecture**: `Not trained`\n- **Top Validation Performance**: `N/A`\n- **Total Experiments Completed**: 1\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `fraud_small.csv`\n- **Rows**: 300 | **Columns**: 5\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.101, ROC_AUC: 0.513 | 0.02s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.154, ROC_AUC: 0.68 | 0.35s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.868, PRECISION: 0.839, RECALL: 0.9, PR_AUC: 0.082, ROC_AUC: 0.509 | 2.04s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.324, ROC_AUC: 0.655 | 0.53s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `COMPLETED` (F1: 0.0)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.1s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 5\n- **Diagnosis**: Analysis identified 0 false positives and 5 false negatives. Bootstrap 95% CI for accuracy: [0.85 - 0.9833]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "test-validation-01": "# Autonomous ML Research Report: Validation Test Project\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Maximize credit card fraud detection recall and precision\n- **Primary Dataset**: `test_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.925`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `test_fraud.csv`\n- **Rows**: 200 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.18, ROC_AUC: 0.775 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.373, ROC_AUC: 0.441 | 0.11s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.925, F1: 0.918, PRECISION: 0.914, RECALL: 0.925, PR_AUC: 0.124, ROC_AUC: 0.441 | 1.55s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.148, ROC_AUC: 0.658 | 0.1s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `test_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.925)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 2.1s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 1.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 3\n- **Diagnosis**: Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices."
+  },
+  "settings": {
+    "llmProvider": "Not configured",
+    "apiKeySet": false,
+    "sandboxMode": "Process Sandbox (Subprocess isolation)",
+    "dockerAvailable": false,
+    "maxExperiments": 5,
+    "timeBudgetMins": 60
+  }
+}

@@ -1,9 +1,54 @@
-import React from 'react';
-import { Database, AlertOctagon, AlertTriangle, CheckCircle2, FileSpreadsheet, Info, Award } from 'lucide-react';
-import { INITIAL_DATASET_REPORT } from '../mockData';
+import React, { useState, useEffect } from 'react';
+import { Database, AlertOctagon, Award, Loader2 } from 'lucide-react';
+import { fetchProjectDataset } from '../api';
 
-export default function DatasetAnalysisView() {
-  const report = INITIAL_DATASET_REPORT;
+export default function DatasetAnalysisView({ activeProject }) {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeProject?.id) return;
+    setLoading(true);
+    fetchProjectDataset(activeProject.id).then((data) => {
+      setReport(data);
+      setLoading(false);
+    });
+  }, [activeProject?.id]);
+
+  if (!activeProject) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <Database className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200">No dataset selected</h3>
+          <p className="text-xs text-slate-400">Select or start a research project to view real dataset profiling statistics.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center space-x-3 text-cyan-400 font-mono text-sm">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Profiling dataset schema and calculating EDA stats...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="glass-panel p-12 rounded-xl text-center space-y-3 border-slate-800">
+          <Database className="w-10 h-10 text-amber-500 mx-auto" />
+          <h3 className="text-lg font-bold text-slate-200">Not configured</h3>
+          <p className="text-xs text-slate-400">Dataset analysis has not been executed yet for project &apos;{activeProject.name}&apos;.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
@@ -24,7 +69,7 @@ export default function DatasetAnalysisView() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
         <div className="glass-panel p-5 rounded-xl space-y-1">
           <span className="text-xs text-slate-400 font-medium">Total Rows</span>
-          <p className="text-2xl font-bold font-mono text-white">{report.rowCount.toLocaleString()}</p>
+          <p className="text-2xl font-bold font-mono text-white">{report.rowCount?.toLocaleString() || 0}</p>
         </div>
         <div className="glass-panel p-5 rounded-xl space-y-1">
           <span className="text-xs text-slate-400 font-medium">Total Features</span>
@@ -40,37 +85,27 @@ export default function DatasetAnalysisView() {
         </div>
       </div>
 
-      {/* Class Distribution & Imbalance Warning */}
+      {/* Class Distribution */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         <div className="md:col-span-6 glass-panel p-6 rounded-xl space-y-4">
           <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider font-mono">
-            Class Target Distribution
+            Target Distribution ({report.taskType})
           </h3>
           <div className="space-y-3">
-            {report.classDistribution.map((item) => (
+            {report.classDistribution && report.classDistribution.map((item) => (
               <div key={item.label} className="space-y-1">
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-slate-300">{item.label}</span>
-                  <span className="text-cyan-400 font-bold">{item.count.toLocaleString()} ({item.percentage}%)</span>
+                  <span className="text-cyan-400 font-bold">{item.count?.toLocaleString()} ({item.percentage}%)</span>
                 </div>
                 <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${item.percentage < 1 ? 'bg-amber-400' : 'bg-cyan-500'}`}
-                    style={{ width: `${Math.max(item.percentage, 1.5)}%` }}
+                    className={`h-full ${item.percentage < 5 ? 'bg-amber-400' : 'bg-cyan-500'}`}
+                    style={{ width: `${Math.max(item.percentage, 2)}%` }}
                   ></div>
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-start space-x-3 text-xs">
-            <AlertOctagon className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-bold text-amber-300">Extreme Class Imbalance Alert</h4>
-              <p className="text-amber-200/80 leading-relaxed mt-1">
-                Positive fraud class constitutes only 0.17% of total dataset. Standard accuracy yields 99.83% baseline without predicting any fraud. Metrics must be set to PR-AUC and Recall@Precision.
-              </p>
-            </div>
           </div>
         </div>
 
@@ -82,7 +117,7 @@ export default function DatasetAnalysisView() {
           </h3>
 
           <div className="space-y-3">
-            {report.recommendedMetrics.map((m) => (
+            {report.recommendedMetrics && report.recommendedMetrics.map((m) => (
               <div key={m.name} className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200">{m.name}</span>
@@ -102,21 +137,25 @@ export default function DatasetAnalysisView() {
         <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider font-mono">
           Detected Data Quality & Profiling Issues
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {report.detectedIssues.map((issue) => (
-            <div key={issue.title} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                issue.severity === 'CRITICAL' ? 'bg-red-950 text-red-300 border border-red-800' :
-                issue.severity === 'MEDIUM' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
-                'bg-slate-800 text-slate-300'
-              }`}>
-                {issue.severity}
-              </span>
-              <h4 className="font-bold text-sm text-slate-100">{issue.title}</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">{issue.desc}</p>
-            </div>
-          ))}
-        </div>
+        {report.detectedIssues && report.detectedIssues.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {report.detectedIssues.map((issue) => (
+              <div key={issue.title} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                  issue.severity === 'CRITICAL' ? 'bg-red-950 text-red-300 border border-red-800' :
+                  issue.severity === 'MEDIUM' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
+                  'bg-slate-800 text-slate-300'
+                }`}>
+                  {issue.severity}
+                </span>
+                <h4 className="font-bold text-sm text-slate-100">{issue.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{issue.desc}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 italic">No critical schema or quality issues detected.</p>
+        )}
       </div>
     </div>
   );
