@@ -3,22 +3,21 @@ import Sidebar from './components/Sidebar';
 import ResearchStartScreen from './components/ResearchStartScreen';
 import ResearchChatWorkspace from './components/ResearchChatWorkspace';
 import SettingsModal from './components/SettingsModal';
-import { fetchProjects, fetchProjectDetails, createResearchProject, fetchSettings } from './api';
+import { fetchProjects, fetchProjectDetails, sendChatMessage, fetchSettings } from './api';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [dockerReady, setDockerReady] = useState(false);
   const [llmConfigured, setLlmConfigured] = useState(false);
+  const [isInChatWorkspace, setIsInChatWorkspace] = useState(false);
 
   const loadProjects = async () => {
     const list = await fetchProjects();
     setProjects(list);
-    if (!activeProject && list.length > 0) {
-      setActiveProject(list[0]);
-    }
   };
 
   const loadSysSettings = async () => {
@@ -46,16 +45,33 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activeProject?.id]);
 
-  const handleStartResearch = async (formData) => {
+  const handleSendInitialChatMessage = async (userText) => {
+    if (!userText.trim()) return;
     setIsLaunching(true);
+
+    const userMsg = { id: Date.now(), role: 'user', content: userText };
+    setChatMessages([userMsg]);
+    setIsInChatWorkspace(true);
+
     try {
-      const res = await createResearchProject(formData);
-      if (res.project) {
+      const res = await sendChatMessage(userText, activeProject?.id);
+      const assistantMsg = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: res.response,
+        intent: res.intent
+      };
+      setChatMessages(prev => [...prev, assistantMsg]);
+
+      if (res.action === 'START_RESEARCH' && res.project) {
         setActiveProject(res.project);
         await loadProjects();
       }
     } catch (err) {
-      alert("Error launching research: " + err.message);
+      setChatMessages(prev => [
+        ...prev,
+        { id: Date.now() + 1, role: 'assistant', content: `Error: ${err.message}` }
+      ]);
     } finally {
       setIsLaunching(false);
     }
@@ -63,6 +79,8 @@ export default function App() {
 
   const handleNewResearchClick = () => {
     setActiveProject(null);
+    setChatMessages([]);
+    setIsInChatWorkspace(false);
   };
 
   return (
@@ -72,25 +90,31 @@ export default function App() {
       <Sidebar
         projects={projects}
         activeProject={activeProject}
-        setActiveProject={setActiveProject}
+        setActiveProject={(proj) => {
+          setActiveProject(proj);
+          setIsInChatWorkspace(true);
+        }}
         onNewResearch={handleNewResearchClick}
         onOpenSettings={() => setIsSettingsOpen(true)}
         dockerReady={dockerReady}
         llmConfigured={llmConfigured}
       />
 
-      {/* Main Screen: Research Start Screen or Active Workspace */}
+      {/* Main Screen: Research Start Composer or Conversational Workspace */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0B0F17]">
-        {!activeProject ? (
+        {!isInChatWorkspace && !activeProject ? (
           <ResearchStartScreen
-            onStartResearch={handleStartResearch}
+            onSendChatMessage={handleSendInitialChatMessage}
             isLaunching={isLaunching}
           />
         ) : (
           <ResearchChatWorkspace
             activeProject={activeProject}
+            setActiveProject={setActiveProject}
             onNewResearch={handleNewResearchClick}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            chatMessages={chatMessages}
+            setChatMessages={setChatMessages}
           />
         )}
       </main>

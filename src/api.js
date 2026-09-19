@@ -72,6 +72,14 @@ export async function createResearchProject(formData) {
   });
 }
 
+export async function sendChatMessage(message, projectId = null) {
+  return safeFetchJson(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, projectId })
+  });
+}
+
 export async function sendControlSignal(projectId, signal) {
   return safeFetchJson(`${API_BASE}/projects/${projectId}/control`, {
     method: 'POST',

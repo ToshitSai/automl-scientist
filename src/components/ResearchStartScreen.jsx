@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-export default function ResearchStartScreen({ onStartResearch, isLaunching }) {
+export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) {
   const [objective, setObjective] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [datasetMode, setDatasetMode] = useState('auto'); // 'auto' | 'upload'
@@ -18,19 +18,10 @@ export default function ResearchStartScreen({ onStartResearch, isLaunching }) {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!objective.trim()) return;
-
-    const formData = new FormData();
-    formData.append('objective', objective.trim());
-    formData.append('budget', budget);
-    formData.append('llm_provider', 'Heuristic / Rule-based');
-    formData.append('max_experiments', maxExperiments);
-    if (datasetMode === 'upload' && selectedFile) {
-      formData.append('file', selectedFile);
-    }
-
-    onStartResearch(formData);
+    onSendChatMessage(objective.trim());
+    setObjective('');
   };
 
   return (
@@ -203,16 +194,7 @@ export default function ResearchStartScreen({ onStartResearch, isLaunching }) {
               key={idx}
               type="button"
               onClick={() => {
-                setObjective(prompt);
-                const formData = new FormData();
-                formData.append('objective', prompt);
-                formData.append('budget', budget);
-                formData.append('llm_provider', 'Heuristic / Rule-based');
-                formData.append('max_experiments', maxExperiments);
-                if (datasetMode === 'upload' && selectedFile) {
-                  formData.append('file', selectedFile);
-                }
-                onStartResearch(formData);
+                onSendChatMessage(prompt);
               }}
               className="px-3 py-1.5 rounded-full bg-[#121722] hover:bg-[#1A2232] border border-[#212B3B] text-slate-300 hover:text-slate-100 transition-all text-xs cursor-pointer shadow-sm"
             >
