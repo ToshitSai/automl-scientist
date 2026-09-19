@@ -31,7 +31,7 @@ CONCEPT_KNOWLEDGE = {
     "precision": "Precision measures how many of the positive predictions made by a model were actually correct. High precision ensures that false positive alarms are minimized.",
     "f1": "The F1 Score is the harmonic mean of precision and recall. It provides a single balanced metric for evaluating classification models, especially on imbalanced datasets.",
     "f1 score": "The F1 Score is the harmonic mean of precision and recall. It provides a single balanced metric for evaluating classification models, especially on imbalanced datasets.",
-    "auc": "AUC (Area Under the ROC Curve) measures a classification model's overall ability to distinguish between positive and negative classes across all possible decision thresholds.",
+    "auc": "AUC (Area Under the ROC Curve) measures a classification model's overall ability to distinguish between positive and negative cases across all possible decision thresholds.",
     "pr-auc": "PR-AUC (Precision-Recall Area Under Curve) evaluates precision vs. recall across decision thresholds, making it an ideal performance metric for severely imbalanced datasets.",
     "roc": "The ROC curve plots the True Positive Rate against the False Positive Rate at various classification thresholds to illustrate model diagnostic capability.",
     "xgboost": "XGBoost (Extreme Gradient Boosting) is an optimized open-source library that implements gradient boosted decision trees designed for speed, scalability, and high tabular predictive accuracy.",
@@ -67,7 +67,13 @@ def extract_topic(message: str) -> Optional[str]:
 
     return None
 
-def classify_intent(message: str, active_project_id: Optional[str] = None, session_id: Optional[str] = None) -> str:
+def classify_intent(
+    message: str, 
+    active_project_id: Optional[str] = None, 
+    session_id: Optional[str] = None,
+    payload_pending_action: Optional[Dict[str, Any]] = None,
+    payload_last_topic: Optional[str] = None
+) -> str:
     """
     Classifies user message intent using strict priority order:
     1. CONFIRM_PENDING_ACTION
@@ -83,13 +89,15 @@ def classify_intent(message: str, active_project_id: Optional[str] = None, sessi
     msg_clean_nopunct = re.sub(r'[^\w\s]', '', msg_clean)
     
     sess = get_session(session_id)
+    last_topic = payload_last_topic or sess.get("last_topic")
+    pending_action = payload_pending_action or sess.get("pending_action")
 
     # 1. CONFIRM_PENDING_ACTION (e.g. "yes", "yes do it", "go ahead", "do it", "sure")
     if msg_clean_nopunct in CONFIRMATION_PHRASES or any(msg_clean.startswith(prefix) for prefix in ["yes", "sure", "okay", "ok", "do it", "go ahead", "proceed", "let's do", "lets do", "sounds good", "please do"]):
         return "CONFIRM_PENDING_ACTION"
 
     # 2. RESEARCH_FOLLOWUP (e.g. "why did it fail?", "why is that useful?", "why did the second model perform better?")
-    if (active_project_id or sess.get("last_topic")) and any(kw in msg_clean for kw in ["why", "how come", "useful", "this model", "the model", "second model", "first model", "fail", "failed", "choose", "chose", "performance", "that"]):
+    if (active_project_id or last_topic) and any(kw in msg_clean for kw in ["why", "how come", "useful", "this model", "the model", "second model", "first model", "fail", "failed", "choose", "chose", "performance", "that"]):
         return "RESEARCH_FOLLOWUP"
 
     # 3. RESEARCH_CONTROL (e.g. "stop", "pause", "resume", "continue", "try another approach")
@@ -139,7 +147,13 @@ def classify_intent(message: str, active_project_id: Optional[str] = None, sessi
 
     return "CASUAL_CHAT"
 
-def handle_intent_message(message: str, active_project_id: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
+def handle_intent_message(
+    message: str, 
+    active_project_id: Optional[str] = None, 
+    session_id: Optional[str] = None,
+    payload_pending_action: Optional[Dict[str, Any]] = None,
+    payload_last_topic: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Handles conversational user messages with 100% context awareness, pronoun resolution, and pending action execution.
     """
@@ -147,17 +161,34 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
     sess = get_session(sid)
     store.update_session(sid, {"last_user_message": message})
 
+    if payload_pending_action is not None:
+        if payload_pending_action:
+            store.set_pending_action(
+                sid, 
+                action_type=payload_pending_action.get("type"), 
+                topic=payload_pending_action.get("topic"), 
+                query=payload_pending_action.get("query"), 
+                project_id=payload_pending_action.get("projectId")
+            )
+        else:
+            store.clear_pending_action(sid)
+
+    if payload_last_topic:
+        store.update_session(sid, {"last_topic": payload_last_topic})
+
     if active_project_id:
         store.update_session(sid, {"active_project_id": active_project_id})
 
-    intent = classify_intent(message, active_project_id, sid)
+    # Re-fetch session after updating state
+    sess = get_session(sid)
+    intent = classify_intent(message, active_project_id, sid, payload_pending_action, payload_last_topic)
     msg_clean = message.strip().lower()
 
     print(f"[INTENT ROUTER] Session: {sid} | Message: '{message}' | Intent: '{intent}' | Pending Action: {sess.get('pending_action')}")
 
     # 1. CONFIRM_PENDING_ACTION
     if intent == "CONFIRM_PENDING_ACTION":
-        pending = sess.get("pending_action")
+        pending = sess.get("pending_action") or payload_pending_action
         
         if pending:
             p_type = pending.get("type")
@@ -173,21 +204,27 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
                     "response": f"Absolutely. I'll investigate {p_topic} for you.",
                     "action": "START_RESEARCH",
                     "researchQuery": p_query,
-                    "projectId": None
+                    "projectId": None,
+                    "pendingAction": None,
+                    "lastTopic": sess.get("last_topic")
                 }
             elif p_type == "NEXT_EXPERIMENT":
                 return {
                     "intent": intent,
                     "response": "Got it. Formulating and executing another research experiment...",
                     "action": "NEXT_EXPERIMENT",
-                    "projectId": p_proj
+                    "projectId": p_proj,
+                    "pendingAction": None,
+                    "lastTopic": sess.get("last_topic")
                 }
             elif p_type == "SHOW_REPORT":
                 return {
                     "intent": intent,
                     "response": "Here is the scientific research report compiling our verified experimental findings.",
                     "action": "SHOW_REPORT",
-                    "projectId": p_proj
+                    "projectId": p_proj,
+                    "pendingAction": None,
+                    "lastTopic": sess.get("last_topic")
                 }
 
         # If user confirmed but NO pending action exists:
@@ -195,7 +232,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             "intent": intent,
             "response": "Sure — what would you like me to investigate?",
             "action": "NONE",
-            "projectId": active_project_id
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
         }
 
     # 2. EXPLANATION
@@ -232,17 +271,22 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
 
         resp_text = base_exp + offer
         store.update_session(sid, {"last_assistant_message": resp_text})
+        
+        # Re-fetch session to get updated pending_action
+        sess = get_session(sid)
 
         return {
             "intent": intent,
             "response": resp_text,
             "action": "NONE",
-            "projectId": active_project_id
+            "projectId": active_project_id,
+            "pendingAction": sess.get("pending_action"),
+            "lastTopic": topic.lower()
         }
 
     # 3. RESEARCH_FOLLOWUP (Context & Pronoun Resolution)
     elif intent == "RESEARCH_FOLLOWUP":
-        last_topic = sess.get("last_topic")
+        last_topic = payload_last_topic or sess.get("last_topic")
         
         # Handle "why is that/it useful?" for Python or other recent topic
         if "useful" in msg_clean and last_topic == "python":
@@ -255,7 +299,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
                 "intent": intent,
                 "response": resp_text,
                 "action": "NONE",
-                "projectId": active_project_id
+                "projectId": active_project_id,
+                "pendingAction": sess.get("pending_action"),
+                "lastTopic": last_topic
             }
 
         # Active Project Followup
@@ -277,7 +323,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             "intent": intent,
             "response": answer,
             "action": "NONE",
-            "projectId": active_project_id
+            "projectId": active_project_id,
+            "pendingAction": sess.get("pending_action"),
+            "lastTopic": last_topic
         }
 
     # 4. RESEARCH_START
@@ -293,7 +341,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             "response": resp_text,
             "action": "START_RESEARCH",
             "researchQuery": topic,
-            "projectId": None
+            "projectId": None,
+            "pendingAction": None,
+            "lastTopic": topic
         }
 
     # 5. RESEARCH_CONTROL
@@ -306,7 +356,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
                 "intent": intent,
                 "response": "I've stopped the active research pipeline as requested.",
                 "action": "STOP_RESEARCH",
-                "projectId": active_project_id
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": sess.get("last_topic")
             }
         elif "continue" in msg_clean or "resume" in msg_clean:
             if active_project_id:
@@ -315,14 +367,18 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
                 "intent": intent,
                 "response": "Resuming the active research pipeline...",
                 "action": "RESUME_RESEARCH",
-                "projectId": active_project_id
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": sess.get("last_topic")
             }
         else: # "try another model", "try another approach", "run another experiment"
             return {
                 "intent": intent,
                 "response": "Got it. Formulating and executing another research experiment...",
                 "action": "NEXT_EXPERIMENT",
-                "projectId": active_project_id
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": sess.get("last_topic")
             }
 
     # 6. REPORT_REQUEST
@@ -332,7 +388,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             "intent": intent,
             "response": "Here is the scientific research report compiling our verified experimental findings.",
             "action": "SHOW_REPORT",
-            "projectId": active_project_id
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
         }
 
     # 7. TECHNICAL_DETAILS
@@ -341,7 +399,9 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             "intent": intent,
             "response": "Opening technical details panel...",
             "action": "SHOW_TECHNICAL",
-            "projectId": active_project_id
+            "projectId": active_project_id,
+            "pendingAction": sess.get("pending_action"),
+            "lastTopic": sess.get("last_topic")
         }
 
     # 8. CASUAL_CHAT
@@ -362,5 +422,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
         "intent": "CASUAL_CHAT",
         "response": content,
         "action": "NONE",
-        "projectId": active_project_id
+        "projectId": active_project_id,
+        "pendingAction": None,
+        "lastTopic": sess.get("last_topic")
     }

@@ -27,7 +27,8 @@ export default function ResearchChatWorkspace({
   const [reportMd, setReportMd] = useState(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [lastTopic, setLastTopic] = useState(null);
   const [conversationId] = useState(() => 'conv-' + Math.random().toString(36).substring(2, 9));
   const chatBottomRef = useRef(null);
 
@@ -83,7 +84,14 @@ export default function ResearchChatWorkspace({
 
     try {
       // 2. Call backend Intent Router endpoint
-      const res = await sendChatMessage(userText, projectId, conversationId);
+      const res = await sendChatMessage(userText, projectId, conversationId, pendingAction, lastTopic);
+      
+      if (res.pendingAction !== undefined) {
+        setPendingAction(res.pendingAction);
+      }
+      if (res.lastTopic) {
+        setLastTopic(res.lastTopic);
+      }
       
       const assistantMsg = {
         id: Date.now() + 1,

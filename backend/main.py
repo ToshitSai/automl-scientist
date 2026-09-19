@@ -159,11 +159,19 @@ async def chat_endpoint(payload: dict):
     message = payload.get("message", "").strip()
     active_project_id = payload.get("projectId")
     conversation_id = payload.get("conversationId", "default-session")
+    payload_pending_action = payload.get("pendingAction")
+    payload_last_topic = payload.get("lastTopic")
 
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    res = handle_intent_message(message, active_project_id, conversation_id)
+    res = handle_intent_message(
+        message=message, 
+        active_project_id=active_project_id, 
+        session_id=conversation_id,
+        payload_pending_action=payload_pending_action,
+        payload_last_topic=payload_last_topic
+    )
     action = res.get("action")
 
     if action == "START_RESEARCH":
