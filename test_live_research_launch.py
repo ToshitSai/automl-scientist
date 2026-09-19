@@ -43,5 +43,8 @@ try:
     for log in p_data.get("agentLogs", []):
         print(f"  [{log.get('agent')}] {log.get('message')} ({log.get('status')})")
 
+except urllib.error.HTTPError as he:
+    print("LIVE RESEARCH LAUNCH TEST FAILED HTTPError:", he.code)
+    print("ERROR BODY:", he.read().decode('utf-8'))
 except Exception as e:
     print("LIVE RESEARCH LAUNCH TEST FAILED:", e)

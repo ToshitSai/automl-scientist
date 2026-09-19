@@ -1197,6 +1197,49 @@
           "reason": "Measures class separation capability."
         }
       ]
+    },
+    "test-local-run": {
+      "filename": "test_eda.csv",
+      "rowCount": 100,
+      "columnCount": 3,
+      "fileSize": "0.00 MB",
+      "targetCandidate": "target",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 52,
+          "percentage": 52.0
+        },
+        {
+          "label": "1",
+          "count": 48,
+          "percentage": 48.0
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 3,
+      "categoricalColumns": 0,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
     }
   },
   "baselines": {
@@ -1661,6 +1704,72 @@
         "trainingTime": "0.14s",
         "status": "COMPLETED"
       }
+    ],
+    "test-local-run": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.55,
+          "f1": 0.54,
+          "precision": 0.555,
+          "recall": 0.55,
+          "pr_auc": 0.692,
+          "roc_auc": 0.64
+        },
+        "trainingTime": "0.02s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.35,
+          "f1": 0.348,
+          "precision": 0.348,
+          "recall": 0.35,
+          "pr_auc": 0.398,
+          "roc_auc": 0.35
+        },
+        "trainingTime": "0.1s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.45,
+          "f1": 0.437,
+          "precision": 0.445,
+          "recall": 0.45,
+          "pr_auc": 0.453,
+          "roc_auc": 0.44
+        },
+        "trainingTime": "1.43s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.4,
+          "f1": 0.394,
+          "precision": 0.396,
+          "recall": 0.4,
+          "pr_auc": 0.567,
+          "roc_auc": 0.46
+        },
+        "trainingTime": "0.09s",
+        "status": "COMPLETED"
+      }
     ]
   },
   "experiments": {},
@@ -1947,6 +2056,51 @@
         "executionTime": "2.97s",
         "stdout": "",
         "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpwsxs7z3q\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets/demo_credit_card_fraud.csv'\n",
+        "children": []
+      }
+    ],
+    "test-local-run": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `test_eda.csv` using standard benchmark models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.55,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.02s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.",
+        "status": "PLATEAUED",
+        "metricName": "F1-Score",
+        "metricValue": 0.5444,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "2.39s",
+        "stdout": "Experiment completed successfully. Target score: 0.5444\n",
+        "stderr": "",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+        "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.",
+        "status": "PLATEAUED",
+        "metricName": "F1-Score",
+        "metricValue": 0.5444,
+        "hyperparams": "n_estimators=200, learning_rate=0.02, max_depth=4",
+        "executionTime": "2.45s",
+        "stdout": "Experiment completed successfully. Target score: 0.5444\n",
+        "stderr": "",
         "children": []
       }
     ]
@@ -2270,6 +2424,48 @@
         "ci_upper": 0.98
       },
       "failureDiagnosis": "Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+    },
+    "test-local-run": {
+      "falsePositivesCount": 3,
+      "falseNegativesCount": 6,
+      "topFailingFeatures": [
+        {
+          "feature": "feature_2",
+          "importanceScore": 0.35,
+          "message": "Feature 'feature_2' exhibits strong correlation (0.35) with prediction errors."
+        },
+        {
+          "feature": "feature_1",
+          "importanceScore": 0.11,
+          "message": "Feature 'feature_1' exhibits strong correlation (0.11) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "feature_1 (Low Range Slice)",
+          "fraudCount": 7,
+          "recall": "42.9%",
+          "note": "Accuracy on slice is 42.9% across 7 samples."
+        },
+        {
+          "slice": "feature_1 (Mid Range Slice)",
+          "fraudCount": 6,
+          "recall": "50.0%",
+          "note": "Accuracy on slice is 50.0% across 6 samples."
+        },
+        {
+          "slice": "feature_1 (High Range Slice)",
+          "fraudCount": 7,
+          "recall": "71.4%",
+          "note": "Accuracy on slice is 71.4% across 7 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.5553,
+        "ci_lower": 0.35,
+        "ci_upper": 0.8
+      },
+      "failureDiagnosis": "Analysis identified 3 false positives and 6 false negatives. Bootstrap 95% CI for accuracy: [0.35 - 0.8]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
     }
   },
   "literature": {
@@ -2355,7 +2551,8 @@
     ],
     "test-validation-01": [],
     "test-phase1-full": [],
-    "proj-ai-assistant-demo": []
+    "proj-ai-assistant-demo": [],
+    "test-local-run": []
   },
   "reports": {
     "proj-7e129e": "# Autonomous ML Research Report: Research: Predict credit fraud using tabular \n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Predict credit fraud using tabular ML\n- **Primary Dataset**: `proj-7e129e_sample.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.99`\n- **Total Experiments Completed**: 2\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-7e129e_sample.csv`\n- **Rows**: 1,000 | **Columns**: 11\n- **Target Column**: `Target_Class` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.99, F1: 0.99, PRECISION: 0.99, RECALL: 0.99, PR_AUC: 0.999, ROC_AUC: 1.0 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.945, F1: 0.942, PRECISION: 0.946, RECALL: 0.945, PR_AUC: 0.937, ROC_AUC: 0.987 | 0.12s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.965, F1: 0.965, PRECISION: 0.965, RECALL: 0.965, PR_AUC: 0.968, ROC_AUC: 0.993 | 1.26s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.955, F1: 0.954, PRECISION: 0.954, RECALL: 0.955, PR_AUC: 0.972, ROC_AUC: 0.994 | 0.31s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-7e129e_sample.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.99)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.99)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.08s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 2\n- **Diagnosis**: Analysis identified 0 false positives and 2 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'V2'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
@@ -2364,7 +2561,8 @@
     "test-phase1-run": "# Autonomous ML Research Report: Test Phase 1 Single Experiment\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud classification metrics using feature engineering and tree regularization.\n- **Primary Dataset**: `fraud_small.csv`\n- **Best Model Architecture**: `Not trained`\n- **Top Validation Performance**: `N/A`\n- **Total Experiments Completed**: 1\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `fraud_small.csv`\n- **Rows**: 300 | **Columns**: 5\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.101, ROC_AUC: 0.513 | 0.02s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.154, ROC_AUC: 0.68 | 0.35s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.868, PRECISION: 0.839, RECALL: 0.9, PR_AUC: 0.082, ROC_AUC: 0.509 | 2.04s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.324, ROC_AUC: 0.655 | 0.53s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `COMPLETED` (F1: 0.0)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.1s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 5\n- **Diagnosis**: Analysis identified 0 false positives and 5 false negatives. Bootstrap 95% CI for accuracy: [0.85 - 0.9833]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
     "test-validation-01": "# Autonomous ML Research Report: Validation Test Project\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Maximize credit card fraud detection recall and precision\n- **Primary Dataset**: `test_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.925`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `test_fraud.csv`\n- **Rows**: 200 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.18, ROC_AUC: 0.775 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.373, ROC_AUC: 0.441 | 0.11s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.925, F1: 0.918, PRECISION: 0.914, RECALL: 0.925, PR_AUC: 0.124, ROC_AUC: 0.441 | 1.55s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.148, ROC_AUC: 0.658 | 0.1s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `test_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.925)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 2.1s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 1.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 3\n- **Diagnosis**: Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
     "test-phase1-full": "# Autonomous ML Research Report: Phase 1 Real Execution Test\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve credit card fraud detection recall and precision under severe class imbalance\n- **Primary Dataset**: `phase1_credit_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.9`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `phase1_credit_fraud.csv`\n- **Rows**: 300 | **Columns**: 7\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.9, F1: 0.853, PRECISION: 0.81, RECALL: 0.9, PR_AUC: 0.346, ROC_AUC: 0.627 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.9, F1: 0.877, PRECISION: 0.872, RECALL: 0.9, PR_AUC: 0.295, ROC_AUC: 0.67 | 0.17s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.891, PRECISION: 0.886, RECALL: 0.9, PR_AUC: 0.247, ROC_AUC: 0.63 | 1.45s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.9, F1: 0.853, PRECISION: 0.81, RECALL: 0.9, PR_AUC: 0.122, ROC_AUC: 0.519 | 0.24s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `phase1_credit_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.9)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.9)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 3.36s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.9)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 3.21s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 6\n- **Diagnosis**: Analysis identified 0 false positives and 6 false negatives. Bootstrap 95% CI for accuracy: [0.8167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
-    "proj-ai-assistant-demo": "# Autonomous ML Research Report: Improve fraud detection under extreme class imbalance\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud detection recall and precision under severe class imbalance\n- **Primary Dataset**: `demo_credit_card_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.92`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `demo_credit_card_fraud.csv`\n- **Rows**: 250 | **Columns**: 7\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.09, ROC_AUC: 0.571 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.119, ROC_AUC: 0.647 | 0.19s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.872, PRECISION: 0.845, RECALL: 0.9, PR_AUC: 0.087, ROC_AUC: 0.582 | 1.6s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.124, ROC_AUC: 0.717 | 0.14s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `demo_credit_card_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.92)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 3.21s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 2.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 4\n- **Diagnosis**: Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices."
+    "proj-ai-assistant-demo": "# Autonomous ML Research Report: Improve fraud detection under extreme class imbalance\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud detection recall and precision under severe class imbalance\n- **Primary Dataset**: `demo_credit_card_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.92`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `demo_credit_card_fraud.csv`\n- **Rows**: 250 | **Columns**: 7\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.09, ROC_AUC: 0.571 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.119, ROC_AUC: 0.647 | 0.19s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.872, PRECISION: 0.845, RECALL: 0.9, PR_AUC: 0.087, ROC_AUC: 0.582 | 1.6s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.124, ROC_AUC: 0.717 | 0.14s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `demo_credit_card_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.92)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 3.21s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 2.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 4\n- **Diagnosis**: Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "test-local-run": "# Autonomous ML Research Report: Local Test Run\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve credit-card fraud detection recall.\n- **Primary Dataset**: `test_eda.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.55`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `test_eda.csv`\n- **Rows**: 100 | **Columns**: 3\n- **Target Column**: `target` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.55, F1: 0.54, PRECISION: 0.555, RECALL: 0.55, PR_AUC: 0.692, ROC_AUC: 0.64 | 0.02s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.35, F1: 0.348, PRECISION: 0.348, RECALL: 0.35, PR_AUC: 0.398, ROC_AUC: 0.35 | 0.1s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.45, F1: 0.437, PRECISION: 0.445, RECALL: 0.45, PR_AUC: 0.453, ROC_AUC: 0.44 | 1.43s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.4, F1: 0.394, PRECISION: 0.396, RECALL: 0.4, PR_AUC: 0.567, ROC_AUC: 0.46 | 0.09s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `test_eda.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.55)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.02s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `PLATEAUED` (F1-Score: 0.5444)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 2.39s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `PLATEAUED` (F1-Score: 0.5444)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 2.45s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 3\n- **False Negatives**: 6\n- **Diagnosis**: Analysis identified 3 false positives and 6 false negatives. Bootstrap 95% CI for accuracy: [0.35 - 0.8]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices."
   },
   "settings": {
     "llmProvider": "Not configured",

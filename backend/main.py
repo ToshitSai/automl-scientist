@@ -40,6 +40,48 @@ def get_datasets_dir():
 
 DATASETS_DIR = get_datasets_dir()
 
+def _generate_auto_benchmark_dataset(path: str):
+    """Generates a realistic credit card fraud detection benchmark dataset using pure Python stdlib."""
+    import csv
+    import random
+
+    rng = random.Random(42)
+    n_samples = 300
+    n_fraud = 25
+
+    rows = []
+    headers = ['transaction_id', 'time_seconds', 'amount', 'v1', 'v2', 'v3', 'v4', 'is_fraud']
+
+    # Non-fraud samples
+    for i in range(n_samples - n_fraud):
+        tx_id = f"tx_{i:04d}"
+        t_sec = round(rng.uniform(0, 86400), 2)
+        amt = round(rng.expovariate(1.0 / 50.0), 2)
+        v1 = round(rng.gauss(0, 1), 4)
+        v2 = round(rng.gauss(0, 1), 4)
+        v3 = round(rng.gauss(0, 1), 4)
+        v4 = round(rng.gauss(0, 1), 4)
+        rows.append([tx_id, t_sec, amt, v1, v2, v3, v4, 0])
+
+    # Fraud samples (distinct distributions)
+    for i in range(n_fraud):
+        tx_id = f"tx_{n_samples - n_fraud + i:04d}"
+        t_sec = round(rng.choice([rng.uniform(0, 18000), rng.uniform(72000, 86400)]), 2)
+        amt = round(rng.expovariate(1.0 / 300.0), 2)
+        v1 = round(rng.gauss(-2.5, 1.5), 4)
+        v2 = round(rng.gauss(2.0, 1.2), 4)
+        v3 = round(rng.gauss(-3.0, 1.8), 4)
+        v4 = round(rng.gauss(2.8, 1.1), 4)
+        rows.append([tx_id, t_sec, amt, v1, v2, v3, v4, 1])
+
+    rng.shuffle(rows)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        writer.writerows(rows)
+
 def safe_docker_check() -> bool:
     try:
         from sandbox.runner import is_docker_available
@@ -139,10 +181,9 @@ async def start_research(
             with open(dataset_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
         else:
-            raise HTTPException(
-                status_code=400,
-                detail="Dataset file missing. Please upload a dataset file (.csv or .parquet) to proceed with autonomous research."
-            )
+            dataset_name = "Auto: credit_card_fraud_benchmark.csv"
+            dataset_path = os.path.join(DATASETS_DIR, f"{project_id}_auto.csv")
+            _generate_auto_benchmark_dataset(dataset_path)
 
         project = store.create_project(
             project_id=project_id,
