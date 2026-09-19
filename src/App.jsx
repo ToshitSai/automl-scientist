@@ -16,6 +16,9 @@ export default function App() {
   const loadProjects = async () => {
     const list = await fetchProjects();
     setProjects(list);
+    if (!activeProject && list.length > 0) {
+      setActiveProject(list[0]);
+    }
   };
 
   const loadSysSettings = async () => {

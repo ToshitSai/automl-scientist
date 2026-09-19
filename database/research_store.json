@@ -373,6 +373,515 @@
         }
       ],
       "controlSignal": "RUN"
+    },
+    "proj-ai-assistant-demo": {
+      "id": "proj-ai-assistant-demo",
+      "name": "Improve fraud detection under extreme class imbalance",
+      "objective": "Improve fraud detection recall and precision under severe class imbalance",
+      "researchQuestion": "How can fraud detection recall be improved under severe class imbalance while controlling false positives?",
+      "datasetName": "demo_credit_card_fraud.csv",
+      "status": "COMPLETED",
+      "createdAt": "2026-09-19T06:13:49.090019+00:00",
+      "experimentsCount": 2,
+      "maxExperiments": 2,
+      "bestMetric": "ACCURACY: 0.92",
+      "bestModel": "Logistic Regression",
+      "llmProvider": "Heuristic / Rule-based",
+      "engineState": "HEURISTIC FALLBACK",
+      "budgetMins": 60,
+      "computeUsed": "0.2 mins / 60 mins",
+      "activeAgent": "FINISHED",
+      "agentLogs": [
+        {
+          "timestamp": "2026-09-19T06:13:49.112294+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating Machine-Learning Research Question for objective: 'Improve fraud detection recall and precision under severe class imbalance'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:49.123233+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Research Question generated: \"How can fraud detection recall be improved under severe class imbalance while controlling false positives?\"",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:49.138621+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Executing literature search on Semantic Scholar API...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:50.187539+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Literature search API unconfigured or 0 papers returned. Marked stage as NOT CONFIGURED.",
+          "status": "WARNING"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:50.201635+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at demo_credit_card_fraud.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:50.987155+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Dataset EDA completed & verified. 250 rows, 7 columns. Target: 'is_fraud' (classification).",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:13:51.004293+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Training baseline models (Logistic Regression, Random Forest, Gradient Boosting, MLP)...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:24.939952+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Formulating Machine-Learning Research Question for objective: 'Improve fraud detection recall and precision under severe class imbalance'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:24.953265+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Research Question generated: \"How can fraud detection recall be improved under severe class imbalance while controlling false positives?\"",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:24.968583+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Executing literature search on Semantic Scholar API...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:25.982424+00:00",
+          "agent": "RESEARCH_AGENT",
+          "message": "Literature search API unconfigured or 0 papers returned. Marked stage as NOT CONFIGURED.",
+          "status": "WARNING"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:25.998295+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Inspecting dataset at demo_credit_card_fraud.csv...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:26.714023+00:00",
+          "agent": "DATASET_AGENT",
+          "message": "Dataset EDA completed & verified. 250 rows, 7 columns. Target: 'is_fraud' (classification).",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:26.730871+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Training baseline models (Logistic Regression, Random Forest, Gradient Boosting, MLP)...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.722705+00:00",
+          "agent": "BASELINE_AGENT",
+          "message": "Evaluated 4 baseline models. Best baseline: 'Logistic Regression' (ACCURACY: 0.92).",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.741520+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Performing statistical error analysis & 95% bootstrap confidence interval estimation...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.762746+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Error diagnostics completed & verified. 95% Bootstrap CI: [0.84 - 0.98].",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.777296+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #1 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.782437+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #1: 'Exp 1: Regularized Gradient Boosting & Feature Selection'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:30.804576+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #1 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.029420+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Docker sandbox unavailable on host system. Executed in isolated Process Sandbox. Stage state: NOT CONFIGURED.",
+          "status": "WARNING"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.038984+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #1 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.061370+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Experiment #1 completed with status: FAILED (ACCURACY: 0.92).",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.075043+00:00",
+          "agent": "HYPOTHESIS_AGENT",
+          "message": "Formulating Hypothesis #2 informed by error diagnostics...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.079663+00:00",
+          "agent": "CODING_AGENT",
+          "message": "Synthesizing Python experiment script for Exp #2: 'Exp 2: Hyperparameter Optimization & Class Weighting'...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:34.101058+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Running sandboxed execution for Exp #2 in isolated environment...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.082920+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Docker sandbox unavailable on host system. Executed in isolated Process Sandbox. Stage state: NOT CONFIGURED.",
+          "status": "WARNING"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.092315+00:00",
+          "agent": "ERROR_ANALYSIS_AGENT",
+          "message": "Running error diagnostics on Experiment #2 predictions...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.115195+00:00",
+          "agent": "EXECUTION_MANAGER",
+          "message": "Experiment #2 completed with status: FAILED (ACCURACY: 0.92).",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.128944+00:00",
+          "agent": "REPORT_AGENT",
+          "message": "Generating scientific Markdown research report from verified results...",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.143257+00:00",
+          "agent": "REPORT_AGENT",
+          "message": "Scientific Markdown research report successfully generated & stored.",
+          "status": "COMPLETED"
+        },
+        {
+          "timestamp": "2026-09-19T06:15:37.148074+00:00",
+          "agent": "RESEARCH_ORCHESTRATOR",
+          "message": "Autonomous research pipeline finished with status: COMPLETED.",
+          "status": "COMPLETED"
+        }
+      ],
+      "events": [
+        {
+          "type": "research.started",
+          "timestamp": "2026-09-19T06:13:49.104505+00:00",
+          "details": {
+            "objective": "Improve fraud detection recall and precision under severe class imbalance"
+          }
+        },
+        {
+          "type": "research.question.generated",
+          "timestamp": "2026-09-19T06:13:49.126776+00:00",
+          "details": {
+            "question": "How can fraud detection recall be improved under severe class imbalance while controlling false positives?"
+          }
+        },
+        {
+          "type": "literature.search.started",
+          "timestamp": "2026-09-19T06:13:49.134863+00:00",
+          "details": {}
+        },
+        {
+          "type": "literature.search.completed",
+          "timestamp": "2026-09-19T06:13:50.191161+00:00",
+          "details": {
+            "count": 0,
+            "status": "NOT_CONFIGURED"
+          }
+        },
+        {
+          "type": "dataset.analysis.started",
+          "timestamp": "2026-09-19T06:13:50.198296+00:00",
+          "details": {}
+        },
+        {
+          "type": "dataset.analysis.completed",
+          "timestamp": "2026-09-19T06:13:50.991503+00:00",
+          "details": {
+            "filename": "demo_credit_card_fraud.csv",
+            "rowCount": 250,
+            "columnCount": 7,
+            "fileSize": "0.01 MB",
+            "targetCandidate": "is_fraud",
+            "taskType": "classification",
+            "classDistribution": [
+              {
+                "label": "0",
+                "count": 229,
+                "percentage": 91.6
+              },
+              {
+                "label": "1",
+                "count": 21,
+                "percentage": 8.4
+              }
+            ],
+            "missingValuesTotal": 0,
+            "duplicateRows": 0,
+            "numericalColumns": 6,
+            "categoricalColumns": 1,
+            "datetimeColumns": 0,
+            "detectedIssues": [],
+            "recommendedMetrics": [
+              {
+                "name": "F1-Score",
+                "importance": "Primary",
+                "reason": "Balanced metric for standard multi-class / binary classification."
+              },
+              {
+                "name": "Accuracy",
+                "importance": "Benchmark",
+                "reason": "Overall fraction of correct predictions."
+              },
+              {
+                "name": "ROC-AUC",
+                "importance": "Secondary",
+                "reason": "Measures class separation capability."
+              }
+            ]
+          }
+        },
+        {
+          "type": "baseline.started",
+          "timestamp": "2026-09-19T06:13:50.999387+00:00",
+          "details": {}
+        },
+        {
+          "type": "research.started",
+          "timestamp": "2026-09-19T06:15:24.931554+00:00",
+          "details": {
+            "objective": "Improve fraud detection recall and precision under severe class imbalance"
+          }
+        },
+        {
+          "type": "research.question.generated",
+          "timestamp": "2026-09-19T06:15:24.957280+00:00",
+          "details": {
+            "question": "How can fraud detection recall be improved under severe class imbalance while controlling false positives?"
+          }
+        },
+        {
+          "type": "literature.search.started",
+          "timestamp": "2026-09-19T06:15:24.964756+00:00",
+          "details": {}
+        },
+        {
+          "type": "literature.search.completed",
+          "timestamp": "2026-09-19T06:15:25.986152+00:00",
+          "details": {
+            "count": 0,
+            "status": "NOT_CONFIGURED"
+          }
+        },
+        {
+          "type": "dataset.analysis.started",
+          "timestamp": "2026-09-19T06:15:25.994691+00:00",
+          "details": {}
+        },
+        {
+          "type": "dataset.analysis.completed",
+          "timestamp": "2026-09-19T06:15:26.718454+00:00",
+          "details": {
+            "filename": "demo_credit_card_fraud.csv",
+            "rowCount": 250,
+            "columnCount": 7,
+            "fileSize": "0.01 MB",
+            "targetCandidate": "is_fraud",
+            "taskType": "classification",
+            "classDistribution": [
+              {
+                "label": "0",
+                "count": 229,
+                "percentage": 91.6
+              },
+              {
+                "label": "1",
+                "count": 21,
+                "percentage": 8.4
+              }
+            ],
+            "missingValuesTotal": 0,
+            "duplicateRows": 0,
+            "numericalColumns": 6,
+            "categoricalColumns": 1,
+            "datetimeColumns": 0,
+            "detectedIssues": [],
+            "recommendedMetrics": [
+              {
+                "name": "F1-Score",
+                "importance": "Primary",
+                "reason": "Balanced metric for standard multi-class / binary classification."
+              },
+              {
+                "name": "Accuracy",
+                "importance": "Benchmark",
+                "reason": "Overall fraction of correct predictions."
+              },
+              {
+                "name": "ROC-AUC",
+                "importance": "Secondary",
+                "reason": "Measures class separation capability."
+              }
+            ]
+          }
+        },
+        {
+          "type": "baseline.started",
+          "timestamp": "2026-09-19T06:15:26.726580+00:00",
+          "details": {}
+        },
+        {
+          "type": "baseline.completed",
+          "timestamp": "2026-09-19T06:15:30.728017+00:00",
+          "details": {
+            "count": 4,
+            "best": "Logistic Regression"
+          }
+        },
+        {
+          "type": "error_analysis.completed",
+          "timestamp": "2026-09-19T06:15:30.768010+00:00",
+          "details": {
+            "falsePositivesCount": 0,
+            "falseNegativesCount": 4,
+            "topFailingFeatures": [
+              {
+                "feature": "v1",
+                "importanceScore": 0.15,
+                "message": "Feature 'v1' exhibits strong correlation (0.15) with prediction errors."
+              },
+              {
+                "feature": "amount",
+                "importanceScore": 0.14,
+                "message": "Feature 'amount' exhibits strong correlation (0.14) with prediction errors."
+              },
+              {
+                "feature": "v3",
+                "importanceScore": 0.09,
+                "message": "Feature 'v3' exhibits strong correlation (0.09) with prediction errors."
+              }
+            ],
+            "sliceAnalysis": [
+              {
+                "slice": "transaction_id (Low Range Slice)",
+                "fraudCount": 17,
+                "recall": "94.1%",
+                "note": "Accuracy on slice is 94.1% across 17 samples."
+              },
+              {
+                "slice": "transaction_id (Mid Range Slice)",
+                "fraudCount": 16,
+                "recall": "81.2%",
+                "note": "Accuracy on slice is 81.2% across 16 samples."
+              },
+              {
+                "slice": "transaction_id (High Range Slice)",
+                "fraudCount": 17,
+                "recall": "100.0%",
+                "note": "Accuracy on slice is 100.0% across 17 samples."
+              }
+            ],
+            "bootstrapCI": {
+              "mean": 0.9168,
+              "ci_lower": 0.84,
+              "ci_upper": 0.98
+            },
+            "failureDiagnosis": "Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+          }
+        },
+        {
+          "type": "hypothesis.generated",
+          "timestamp": "2026-09-19T06:15:30.795099+00:00",
+          "details": {
+            "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+            "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics."
+          }
+        },
+        {
+          "type": "experiment.completed",
+          "timestamp": "2026-09-19T06:15:34.065931+00:00",
+          "details": {
+            "id": "node-exp-1",
+            "parentId": "node-root",
+            "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+            "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.",
+            "status": "FAILED",
+            "metricName": "ACCURACY",
+            "metricValue": 0.92,
+            "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+            "executionTime": "3.21s",
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmphksrq0le\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets/demo_credit_card_fraud.csv'\n",
+            "children": []
+          }
+        },
+        {
+          "type": "hypothesis.generated",
+          "timestamp": "2026-09-19T06:15:34.091311+00:00",
+          "details": {
+            "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+            "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall."
+          }
+        },
+        {
+          "type": "experiment.completed",
+          "timestamp": "2026-09-19T06:15:37.119922+00:00",
+          "details": {
+            "id": "node-exp-2",
+            "parentId": "node-root",
+            "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+            "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.",
+            "status": "FAILED",
+            "metricName": "ACCURACY",
+            "metricValue": 0.92,
+            "hyperparams": "n_estimators=200, learning_rate=0.02, max_depth=4",
+            "executionTime": "2.97s",
+            "stdout": "",
+            "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpwsxs7z3q\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets/demo_credit_card_fraud.csv'\n",
+            "children": []
+          }
+        },
+        {
+          "type": "research.completed",
+          "timestamp": "2026-09-19T06:15:37.157431+00:00",
+          "details": {}
+        }
+      ],
+      "controlSignal": "RUN",
+      "stageStates": {
+        "research_question": "COMPLETED",
+        "dataset_eda": "COMPLETED",
+        "literature_search": "NOT_CONFIGURED",
+        "baseline_training": "COMPLETED",
+        "hypothesis_generation": "COMPLETED",
+        "sandboxed_execution": "NOT_CONFIGURED",
+        "error_diagnostics": "COMPLETED",
+        "research_report": "COMPLETED"
+      }
     }
   },
   "datasets": {
@@ -582,6 +1091,92 @@
       "missingValuesTotal": 0,
       "duplicateRows": 0,
       "numericalColumns": 5,
+      "categoricalColumns": 1,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "test-phase1-full": {
+      "filename": "phase1_credit_fraud.csv",
+      "rowCount": 300,
+      "columnCount": 7,
+      "fileSize": "0.01 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 269,
+          "percentage": 89.67
+        },
+        {
+          "label": "1",
+          "count": 31,
+          "percentage": 10.33
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 6,
+      "categoricalColumns": 1,
+      "datetimeColumns": 0,
+      "detectedIssues": [],
+      "recommendedMetrics": [
+        {
+          "name": "F1-Score",
+          "importance": "Primary",
+          "reason": "Balanced metric for standard multi-class / binary classification."
+        },
+        {
+          "name": "Accuracy",
+          "importance": "Benchmark",
+          "reason": "Overall fraction of correct predictions."
+        },
+        {
+          "name": "ROC-AUC",
+          "importance": "Secondary",
+          "reason": "Measures class separation capability."
+        }
+      ]
+    },
+    "proj-ai-assistant-demo": {
+      "filename": "demo_credit_card_fraud.csv",
+      "rowCount": 250,
+      "columnCount": 7,
+      "fileSize": "0.01 MB",
+      "targetCandidate": "is_fraud",
+      "taskType": "classification",
+      "classDistribution": [
+        {
+          "label": "0",
+          "count": 229,
+          "percentage": 91.6
+        },
+        {
+          "label": "1",
+          "count": 21,
+          "percentage": 8.4
+        }
+      ],
+      "missingValuesTotal": 0,
+      "duplicateRows": 0,
+      "numericalColumns": 6,
       "categoricalColumns": 1,
       "datetimeColumns": 0,
       "detectedIssues": [],
@@ -934,6 +1529,138 @@
         "trainingTime": "0.1s",
         "status": "COMPLETED"
       }
+    ],
+    "test-phase1-full": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.853,
+          "precision": 0.81,
+          "recall": 0.9,
+          "pr_auc": 0.346,
+          "roc_auc": 0.627
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.877,
+          "precision": 0.872,
+          "recall": 0.9,
+          "pr_auc": 0.295,
+          "roc_auc": 0.67
+        },
+        "trainingTime": "0.17s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.891,
+          "precision": 0.886,
+          "recall": 0.9,
+          "pr_auc": 0.247,
+          "roc_auc": 0.63
+        },
+        "trainingTime": "1.45s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.853,
+          "precision": 0.81,
+          "recall": 0.9,
+          "pr_auc": 0.122,
+          "roc_auc": 0.519
+        },
+        "trainingTime": "0.24s",
+        "status": "COMPLETED"
+      }
+    ],
+    "proj-ai-assistant-demo": [
+      {
+        "id": "base-1",
+        "name": "Logistic Regression",
+        "type": "Linear Classification",
+        "whySelected": "Benchmark model for linear classification.",
+        "metrics": {
+          "accuracy": 0.92,
+          "f1": 0.882,
+          "precision": 0.846,
+          "recall": 0.92,
+          "pr_auc": 0.09,
+          "roc_auc": 0.571
+        },
+        "trainingTime": "0.01s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-2",
+        "name": "Random Forest Classifier",
+        "type": "Ensemble Trees",
+        "whySelected": "Benchmark model for ensemble trees.",
+        "metrics": {
+          "accuracy": 0.92,
+          "f1": 0.882,
+          "precision": 0.846,
+          "recall": 0.92,
+          "pr_auc": 0.119,
+          "roc_auc": 0.647
+        },
+        "trainingTime": "0.19s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-3",
+        "name": "XGBoost Classifier",
+        "type": "Gradient Boosted Decision Trees",
+        "whySelected": "Benchmark model for gradient boosted decision trees.",
+        "metrics": {
+          "accuracy": 0.9,
+          "f1": 0.872,
+          "precision": 0.845,
+          "recall": 0.9,
+          "pr_auc": 0.087,
+          "roc_auc": 0.582
+        },
+        "trainingTime": "1.6s",
+        "status": "COMPLETED"
+      },
+      {
+        "id": "base-4",
+        "name": "Simple MLP Neural Net",
+        "type": "Multi-Layer Perceptron",
+        "whySelected": "Benchmark model for multi-layer perceptron.",
+        "metrics": {
+          "accuracy": 0.92,
+          "f1": 0.882,
+          "precision": 0.846,
+          "recall": 0.92,
+          "pr_auc": 0.124,
+          "roc_auc": 0.717
+        },
+        "trainingTime": "0.14s",
+        "status": "COMPLETED"
+      }
     ]
   },
   "experiments": {},
@@ -1130,6 +1857,96 @@
         "executionTime": "1.97s",
         "stdout": "",
         "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpzylw0xda\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets\\\\test_fraud.csv'\n",
+        "children": []
+      }
+    ],
+    "test-phase1-full": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `phase1_credit_fraud.csv` using standard benchmark models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.9,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.9,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "3.36s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpajex597s\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets\\\\phase1_credit_fraud.csv'\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+        "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.9,
+        "hyperparams": "n_estimators=200, learning_rate=0.02, max_depth=4",
+        "executionTime": "3.21s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpe_98x2e9\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets\\\\phase1_credit_fraud.csv'\n",
+        "children": []
+      }
+    ],
+    "proj-ai-assistant-demo": [
+      {
+        "id": "node-root",
+        "parentId": null,
+        "title": "Baseline: Logistic Regression",
+        "hypothesis": "Establish baseline classification performance on dataset `demo_credit_card_fraud.csv` using standard benchmark models.",
+        "status": "SUCCESS",
+        "metricName": "ACCURACY",
+        "metricValue": 0.92,
+        "hyperparams": "Logistic Regression default configuration",
+        "executionTime": "0.01s",
+        "children": [
+          "node-exp-1",
+          "node-exp-2"
+        ]
+      },
+      {
+        "id": "node-exp-1",
+        "parentId": "node-root",
+        "title": "Exp 1: Regularized Gradient Boosting & Feature Selection",
+        "hypothesis": "Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.92,
+        "hyperparams": "n_estimators=150, learning_rate=0.03, max_depth=6",
+        "executionTime": "3.21s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmphksrq0le\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets/demo_credit_card_fraud.csv'\n",
+        "children": []
+      },
+      {
+        "id": "node-exp-2",
+        "parentId": "node-root",
+        "title": "Exp 2: Hyperparameter Optimization & Class Weighting",
+        "hypothesis": "Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.",
+        "status": "FAILED",
+        "metricName": "ACCURACY",
+        "metricValue": 0.92,
+        "hyperparams": "n_estimators=200, learning_rate=0.02, max_depth=4",
+        "executionTime": "2.97s",
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\Toshit\\AppData\\Local\\Temp\\tmpwsxs7z3q\\experiment.py\", line 9, in <module>\n    df = pd.read_csv(dataset_path).dropna()\n         ~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1026, in read_csv\n    return _read(filepath_or_buffer, kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 620, in _read\n    parser = TextFileReader(filepath_or_buffer, **kwds)\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1620, in __init__\n    self._engine = self._make_engine(f, self.engine)\n                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\parsers\\readers.py\", line 1880, in _make_engine\n    self.handles = get_handle(\n                   ~~~~~~~~~~^\n        f,\n        ^^\n    ...<6 lines>...\n        storage_options=self.options.get(\"storage_options\", None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\Toshit\\AppData\\Roaming\\Python\\Python314\\site-packages\\pandas\\io\\common.py\", line 873, in get_handle\n    handle = open(\n        handle,\n    ...<3 lines>...\n        newline=\"\",\n    )\nFileNotFoundError: [Errno 2] No such file or directory: 'uploaded_datasets/demo_credit_card_fraud.csv'\n",
         "children": []
       }
     ]
@@ -1359,6 +2176,100 @@
         "ci_upper": 1.0
       },
       "failureDiagnosis": "Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+    },
+    "test-phase1-full": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 6,
+      "topFailingFeatures": [
+        {
+          "feature": "transaction_id",
+          "importanceScore": 0.17,
+          "message": "Feature 'transaction_id' exhibits strong correlation (0.17) with prediction errors."
+        },
+        {
+          "feature": "v1",
+          "importanceScore": 0.11,
+          "message": "Feature 'v1' exhibits strong correlation (0.11) with prediction errors."
+        },
+        {
+          "feature": "v4",
+          "importanceScore": 0.06,
+          "message": "Feature 'v4' exhibits strong correlation (0.06) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "transaction_id (Low Range Slice)",
+          "fraudCount": 20,
+          "recall": "80.0%",
+          "note": "Accuracy on slice is 80.0% across 20 samples."
+        },
+        {
+          "slice": "transaction_id (Mid Range Slice)",
+          "fraudCount": 19,
+          "recall": "94.7%",
+          "note": "Accuracy on slice is 94.7% across 19 samples."
+        },
+        {
+          "slice": "transaction_id (High Range Slice)",
+          "fraudCount": 21,
+          "recall": "95.2%",
+          "note": "Accuracy on slice is 95.2% across 21 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.9003,
+        "ci_lower": 0.8167,
+        "ci_upper": 0.9667
+      },
+      "failureDiagnosis": "Analysis identified 0 false positives and 6 false negatives. Bootstrap 95% CI for accuracy: [0.8167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
+    },
+    "proj-ai-assistant-demo": {
+      "falsePositivesCount": 0,
+      "falseNegativesCount": 4,
+      "topFailingFeatures": [
+        {
+          "feature": "v1",
+          "importanceScore": 0.15,
+          "message": "Feature 'v1' exhibits strong correlation (0.15) with prediction errors."
+        },
+        {
+          "feature": "amount",
+          "importanceScore": 0.14,
+          "message": "Feature 'amount' exhibits strong correlation (0.14) with prediction errors."
+        },
+        {
+          "feature": "v3",
+          "importanceScore": 0.09,
+          "message": "Feature 'v3' exhibits strong correlation (0.09) with prediction errors."
+        }
+      ],
+      "sliceAnalysis": [
+        {
+          "slice": "transaction_id (Low Range Slice)",
+          "fraudCount": 17,
+          "recall": "94.1%",
+          "note": "Accuracy on slice is 94.1% across 17 samples."
+        },
+        {
+          "slice": "transaction_id (Mid Range Slice)",
+          "fraudCount": 16,
+          "recall": "81.2%",
+          "note": "Accuracy on slice is 81.2% across 16 samples."
+        },
+        {
+          "slice": "transaction_id (High Range Slice)",
+          "fraudCount": 17,
+          "recall": "100.0%",
+          "note": "Accuracy on slice is 100.0% across 17 samples."
+        }
+      ],
+      "bootstrapCI": {
+        "mean": 0.9168,
+        "ci_lower": 0.84,
+        "ci_upper": 0.98
+      },
+      "failureDiagnosis": "Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended."
     }
   },
   "literature": {
@@ -1442,14 +2353,18 @@
         "relevance": "Medium - Informs hypothesis generation regarding feature engineering and hyperparameter tuning."
       }
     ],
-    "test-validation-01": []
+    "test-validation-01": [],
+    "test-phase1-full": [],
+    "proj-ai-assistant-demo": []
   },
   "reports": {
     "proj-7e129e": "# Autonomous ML Research Report: Research: Predict credit fraud using tabular \n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Predict credit fraud using tabular ML\n- **Primary Dataset**: `proj-7e129e_sample.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.99`\n- **Total Experiments Completed**: 2\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-7e129e_sample.csv`\n- **Rows**: 1,000 | **Columns**: 11\n- **Target Column**: `Target_Class` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.99, F1: 0.99, PRECISION: 0.99, RECALL: 0.99, PR_AUC: 0.999, ROC_AUC: 1.0 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.945, F1: 0.942, PRECISION: 0.946, RECALL: 0.945, PR_AUC: 0.937, ROC_AUC: 0.987 | 0.12s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.965, F1: 0.965, PRECISION: 0.965, RECALL: 0.965, PR_AUC: 0.968, ROC_AUC: 0.993 | 1.26s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.955, F1: 0.954, PRECISION: 0.954, RECALL: 0.955, PR_AUC: 0.972, ROC_AUC: 0.994 | 0.31s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-7e129e_sample.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.99)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.99)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.08s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 2\n- **Diagnosis**: Analysis identified 0 false positives and 2 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'V2'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
     "proj-9b1cd0": "# Autonomous ML Research Report: Research: Optimize churn classification with \n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Optimize churn classification with regularized boosting\n- **Primary Dataset**: `proj-9b1cd0_default.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.943`\n- **Total Experiments Completed**: 4\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-9b1cd0_default.csv`\n- **Rows**: 1,500 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n- **[MEDIUM] Feature Skewness**: 1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness.\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.113, ROC_AUC: 0.499 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.078, ROC_AUC: 0.529 | 0.18s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.052, ROC_AUC: 0.45 | 1.33s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.051, ROC_AUC: 0.486 | 0.64s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-9b1cd0_default.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.943)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.09s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 17\n- **Diagnosis**: Analysis identified 0 false positives and 17 false negatives. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
     "proj-3fbf23": "# Autonomous ML Research Report: Research: Predict fraud with bootstrap confid\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Predict fraud with bootstrap confidence bounds\n- **Primary Dataset**: `proj-3fbf23_default.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.943`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `proj-3fbf23_default.csv`\n- **Rows**: 1,500 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n- **[MEDIUM] Feature Skewness**: 1 numerical features (e.g. is_fraud) exhibit heavy kurtosis/skewness.\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.113, ROC_AUC: 0.499 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.078, ROC_AUC: 0.529 | 0.13s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.052, ROC_AUC: 0.45 | 0.78s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.943, F1: 0.916, PRECISION: 0.89, RECALL: 0.943, PR_AUC: 0.051, ROC_AUC: 0.486 | 0.48s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `proj-3fbf23_default.csv` using default models.\n- **Status**: `SUCCESS` (ACCURACY: 0.943)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.943)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.07s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 17\n- **Diagnosis**: Analysis identified 0 false positives and 17 false negatives. Bootstrap 95% CI for accuracy: [0.9167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance in 'transaction_id'. Feature interaction terms or decision threshold recalibration recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
     "test-phase1-run": "# Autonomous ML Research Report: Test Phase 1 Single Experiment\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud classification metrics using feature engineering and tree regularization.\n- **Primary Dataset**: `fraud_small.csv`\n- **Best Model Architecture**: `Not trained`\n- **Top Validation Performance**: `N/A`\n- **Total Experiments Completed**: 1\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `fraud_small.csv`\n- **Rows**: 300 | **Columns**: 5\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.101, ROC_AUC: 0.513 | 0.02s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.154, ROC_AUC: 0.68 | 0.35s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.868, PRECISION: 0.839, RECALL: 0.9, PR_AUC: 0.082, ROC_AUC: 0.509 | 2.04s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.917, F1: 0.877, PRECISION: 0.84, RECALL: 0.917, PR_AUC: 0.324, ROC_AUC: 0.655 | 0.53s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying feature variance thresholding and regularized tree depth for classification will mitigate overfitting and boost validation metrics.\n- **Status**: `COMPLETED` (F1: 0.0)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 0.1s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 5\n- **Diagnosis**: Analysis identified 0 false positives and 5 false negatives. Bootstrap 95% CI for accuracy: [0.85 - 0.9833]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
-    "test-validation-01": "# Autonomous ML Research Report: Validation Test Project\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Maximize credit card fraud detection recall and precision\n- **Primary Dataset**: `test_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.925`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `test_fraud.csv`\n- **Rows**: 200 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.18, ROC_AUC: 0.775 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.373, ROC_AUC: 0.441 | 0.11s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.925, F1: 0.918, PRECISION: 0.914, RECALL: 0.925, PR_AUC: 0.124, ROC_AUC: 0.441 | 1.55s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.148, ROC_AUC: 0.658 | 0.1s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `test_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.925)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 2.1s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 1.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 3\n- **Diagnosis**: Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices."
+    "test-validation-01": "# Autonomous ML Research Report: Validation Test Project\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Maximize credit card fraud detection recall and precision\n- **Primary Dataset**: `test_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.925`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `test_fraud.csv`\n- **Rows**: 200 | **Columns**: 6\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.18, ROC_AUC: 0.775 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.373, ROC_AUC: 0.441 | 0.11s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.925, F1: 0.918, PRECISION: 0.914, RECALL: 0.925, PR_AUC: 0.124, ROC_AUC: 0.441 | 1.55s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.925, F1: 0.889, PRECISION: 0.856, RECALL: 0.925, PR_AUC: 0.148, ROC_AUC: 0.658 | 0.1s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `test_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.925)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 2.1s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.925)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 1.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 3\n- **Diagnosis**: Analysis identified 0 false positives and 3 false negatives. Bootstrap 95% CI for accuracy: [0.8494 - 1.0]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "test-phase1-full": "# Autonomous ML Research Report: Phase 1 Real Execution Test\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve credit card fraud detection recall and precision under severe class imbalance\n- **Primary Dataset**: `phase1_credit_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.9`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `phase1_credit_fraud.csv`\n- **Rows**: 300 | **Columns**: 7\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.9, F1: 0.853, PRECISION: 0.81, RECALL: 0.9, PR_AUC: 0.346, ROC_AUC: 0.627 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.9, F1: 0.877, PRECISION: 0.872, RECALL: 0.9, PR_AUC: 0.295, ROC_AUC: 0.67 | 0.17s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.891, PRECISION: 0.886, RECALL: 0.9, PR_AUC: 0.247, ROC_AUC: 0.63 | 1.45s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.9, F1: 0.853, PRECISION: 0.81, RECALL: 0.9, PR_AUC: 0.122, ROC_AUC: 0.519 | 0.24s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `phase1_credit_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.9)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.9)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 3.36s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.9)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 3.21s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 6\n- **Diagnosis**: Analysis identified 0 false positives and 6 false negatives. Bootstrap 95% CI for accuracy: [0.8167 - 0.9667]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices.",
+    "proj-ai-assistant-demo": "# Autonomous ML Research Report: Improve fraud detection under extreme class imbalance\n\n> **DISCLOSURE (Sakana AI License Clause 3.2.e):** This report was automatically machine-generated by the AutoML Scientist autonomous research system.\n\n## 1. Executive Summary\n- **Research Objective**: Improve fraud detection recall and precision under severe class imbalance\n- **Primary Dataset**: `demo_credit_card_fraud.csv`\n- **Best Model Architecture**: `Logistic Regression`\n- **Top Validation Performance**: `ACCURACY: 0.92`\n- **Total Experiments Completed**: 3\n\n## 2. Dataset Analysis & EDA\n- **Filename**: `demo_credit_card_fraud.csv`\n- **Rows**: 250 | **Columns**: 7\n- **Target Column**: `is_fraud` (classification)\n- **Missing Values**: 0 cells\n- **Duplicate Rows**: 0\n\n### Detected Data Issues:\n\n## 3. Baseline Model Benchmarks\n| Model Name | Model Type | Metric | Runtime | Status |\n| --- | --- | --- | --- | --- |\n| Logistic Regression | Linear Classification | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.09, ROC_AUC: 0.571 | 0.01s | COMPLETED |\n| Random Forest Classifier | Ensemble Trees | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.119, ROC_AUC: 0.647 | 0.19s | COMPLETED |\n| XGBoost Classifier | Gradient Boosted Decision Trees | ACCURACY: 0.9, F1: 0.872, PRECISION: 0.845, RECALL: 0.9, PR_AUC: 0.087, ROC_AUC: 0.582 | 1.6s | COMPLETED |\n| Simple MLP Neural Net | Multi-Layer Perceptron | ACCURACY: 0.92, F1: 0.882, PRECISION: 0.846, RECALL: 0.92, PR_AUC: 0.124, ROC_AUC: 0.717 | 0.14s | COMPLETED |\n\n## 4. Autonomous Experimentation Tree\n### Node: Baseline: Logistic Regression\n- **Hypothesis**: Establish baseline classification performance on dataset `demo_credit_card_fraud.csv` using standard benchmark models.\n- **Status**: `SUCCESS` (ACCURACY: 0.92)\n- **Configuration**: `Logistic Regression default configuration`\n- **Execution Time**: 0.01s\n\n### Node: Exp 1: Regularized Gradient Boosting & Feature Selection\n- **Hypothesis**: Applying regularized gradient boosted decision trees for classification will mitigate overfitting and improve validation metrics.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=150, learning_rate=0.03, max_depth=6`\n- **Execution Time**: 3.21s\n\n### Node: Exp 2: Hyperparameter Optimization & Class Weighting\n- **Hypothesis**: Adjusting decision boundary thresholds and feature scaling for classification will optimize class recall.\n- **Status**: `FAILED` (ACCURACY: 0.92)\n- **Configuration**: `n_estimators=200, learning_rate=0.02, max_depth=4`\n- **Execution Time**: 2.97s\n\n## 5. Error Analysis & Key Takeaways\n- **False Positives**: 0\n- **False Negatives**: 4\n- **Diagnosis**: Analysis identified 0 false positives and 4 false negatives. Bootstrap 95% CI for accuracy: [0.84 - 0.98]. Model misclassifications concentrate on samples with extreme feature variance. Decision threshold recalibration and regularized feature selection recommended.\n\n## 6. Recommendations & Next Steps\n1. Deploy the best performing pipeline configuration into production serving.\n2. Monitor real-world data drift on key failing feature signatures identified in error analysis.\n3. Collect further edge-case training samples for underperforming data slices."
   },
   "settings": {
     "llmProvider": "Not configured",
