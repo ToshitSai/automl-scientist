@@ -12,6 +12,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Reque
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+import backend.config
 from database.store import store
 
 app = FastAPI(title="AutoML Scientist Engine API", version="2.0.0")

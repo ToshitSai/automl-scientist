@@ -13,7 +13,8 @@ from sandbox.runner import execute_sandboxed_experiment
 from backend.error_analyzer import perform_error_analysis
 from backend.literature_search import search_literature
 from backend.report_generator import generate_research_report
-from backend.llm import generate_hypothesis_llm, generate_research_question, query_llm
+from backend.llm import generate_hypothesis_llm, generate_research_question, query_llm, query_critic_llm
+from backend.tracker import tracker
 
 def get_experiments_dir():
     local_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "experiments")
@@ -230,6 +231,10 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
             store.add_agent_log(project_id, "HYPOTHESIS_AGENT", f"Formulating Hypothesis #{exp_idx} informed by error diagnostics...")
             exp_hypothesis = generate_hypothesis_llm(objective, report, baselines, store.get_literature(project_id), exp_idx)
 
+            # Critic LLM Evaluation Step
+            critic_eval = query_critic_llm(exp_hypothesis["title"], exp_hypothesis["hypothesis"], best_metric_str)
+            store.add_agent_log(project_id, "CRITIC_AGENT", f"[{critic_eval['criticModel']}] Scientific Peer Critique: {critic_eval['critique']}", "COMPLETED")
+
             store.add_agent_log(project_id, "CODING_AGENT", f"Synthesizing Python experiment script for Exp #{exp_idx}: '{exp_hypothesis['title']}'...")
 
             exp_dir = os.path.join(project_exp_dir, exp_id)
@@ -248,6 +253,9 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
             store.update_stage_state(project_id, "sandboxed_execution", "RUNNING")
             store.add_agent_log(project_id, "EXECUTION_MANAGER", f"Running sandboxed execution for Exp #{exp_idx} in isolated environment...")
             exec_res = execute_sandboxed_experiment(exp_hypothesis["python_script"], dataset_path, timeout_sec=60)
+
+            # Log to Telemetry Tracker (MLflow / DB / Redis)
+            tracker.log_project_telemetry(project_id, f"exp_{exp_idx}", exec_res["metrics"])
 
             with open(os.path.join(exp_dir, "stdout.log"), "w", encoding="utf-8") as f:
                 f.write(exec_res["stdout"])

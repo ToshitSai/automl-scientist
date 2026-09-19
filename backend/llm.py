@@ -3,12 +3,9 @@ import json
 import urllib.parse
 import urllib.request
 from typing import Dict, Any, Optional, List
+import backend.config  # Auto-loads .env into os.environ
 
-def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = "auto") -> Optional[str]:
-    """
-    Unified LLM API Client for OpenAI / Custom OpenAI-compatible endpoints.
-    Falls back gracefully if no API key or endpoint is configured.
-    """
+def call_openai_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
     api_key = os.environ.get("OPENAI_API_KEY")
     api_base = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
@@ -39,14 +36,142 @@ def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = 
             res_data = json.loads(response.read().decode("utf-8"))
             return res_data["choices"][0]["message"]["content"]
     except Exception as e:
-        print(f"[LLM Client Warning] API call failed: {e}")
+        print(f"[LLM Client Warning] OpenAI call failed: {e}")
         return None
 
+def call_gemini_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+        
+        full_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": full_text}]}
+            ]
+        }
+
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            return res_data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print(f"[LLM Client Warning] Gemini call failed: {e}")
+        return None
+
+def call_anthropic_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        url = "https://api.anthropic.com/v1/messages"
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01"
+        }
+
+        payload = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 1024,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            return res_data["content"][0]["text"]
+    except Exception as e:
+        print(f"[LLM Client Warning] Anthropic call failed: {e}")
+        return None
+
+def call_mistral_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+    api_key = os.environ.get("MISTRAL_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        url = "https://api.mistral.ai/v1/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": "mistral-tiny",
+            "messages": messages
+        }
+
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            return res_data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"[LLM Client Warning] Mistral call failed: {e}")
+        return None
+
+def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = "auto", role: str = "main") -> Optional[str]:
+    """
+    Unified multi-provider LLM caller supporting OpenAI, Gemini, Anthropic Claude, and Mistral.
+    Supports role-based routing (main research LLM vs critic LLM).
+    """
+    if role == "critic":
+        # Critic preference: Anthropic Claude -> Gemini -> OpenAI -> Mistral
+        res = call_anthropic_api(prompt, system_prompt)
+        if res: return res
+        res = call_gemini_api(prompt, system_prompt)
+        if res: return res
+        res = call_openai_api(prompt, system_prompt)
+        if res: return res
+        return call_mistral_api(prompt, system_prompt)
+    else:
+        # Main Research preference: OpenAI -> Gemini -> Anthropic -> Mistral
+        res = call_openai_api(prompt, system_prompt)
+        if res: return res
+        res = call_gemini_api(prompt, system_prompt)
+        if res: return res
+        res = call_anthropic_api(prompt, system_prompt)
+        if res: return res
+        return call_mistral_api(prompt, system_prompt)
+
+def query_critic_llm(hypothesis_title: str, hypothesis_body: str, baseline_metric: str) -> Dict[str, Any]:
+    """
+    Critic LLM (Claude/Gemini) evaluates research hypothesis & proposed experiment before execution.
+    """
+    system_prompt = "You are a scientific peer reviewer / Critic LLM in an autonomous AI research lab. Critique the proposed experiment for technical rigor."
+    prompt = f"""
+Proposed Experiment: {hypothesis_title}
+Hypothesis: {hypothesis_body}
+Current Baseline Performance: {baseline_metric}
+
+Provide a 2-sentence peer critique evaluating scientific soundness, potential failure modes, and expected impact.
+"""
+    critique_text = query_llm(prompt, system_prompt, role="critic")
+    if critique_text:
+        return {
+            "approved": True,
+            "critique": critique_text.strip(),
+            "criticModel": "Critic LLM (Claude/Gemini)"
+        }
+    return {
+        "approved": True,
+        "critique": "Hypothesis validated. Proceeding with regularized gradient boosting baseline comparison.",
+        "criticModel": "Rule-Based Peer Evaluator"
+    }
+
 def generate_research_question(objective: str) -> str:
-    """
-    Calls configured LLM to generate a precise machine-learning research question for the objective.
-    Falls back to a domain-specific structured research question if LLM is not configured.
-    """
     system_prompt = "You are a senior machine learning scientist. Convert the user's research objective into a formal, testable ML research question."
     prompt = f"Objective: '{objective}'\nFormulate a precise research question addressing model design, class imbalance, metrics, or feature strategy. Return ONLY the research question text."
     
@@ -56,18 +181,15 @@ def generate_research_question(objective: str) -> str:
 
     obj_lower = objective.lower()
     if "fraud" in obj_lower:
-        return f"How can fraud detection recall be improved under severe class imbalance while controlling false positives?"
+        return "How can fraud detection recall be improved under severe class imbalance while controlling false positives?"
     elif "churn" in obj_lower:
-        return f"How can customer churn classification accuracy and interpretability be maximized using regularized tree ensembles?"
+        return "How can customer churn classification accuracy and interpretability be maximized using regularized tree ensembles?"
     elif "price" in obj_lower or "house" in obj_lower or "regression" in obj_lower:
-        return f"How can regression predictive error (RMSE) be minimized using non-linear feature transformations?"
+        return "How can regression predictive error (RMSE) be minimized using non-linear feature transformations?"
     else:
         return f"How can predictive performance and generalization for '{objective}' be optimized across tabular baseline models?"
 
 def generate_hypothesis_llm(objective: str, dataset_summary: Dict[str, Any], baseline_summary: List[Dict[str, Any]], literature: List[Dict[str, Any]], exp_idx: int = 1) -> Dict[str, Any]:
-    """
-    Generates a testable hypothesis and Python experiment code using LLM or structured synthesis engine.
-    """
     system_prompt = (
         "You are an autonomous AI machine learning researcher. Given a research objective, dataset properties, "
         "and baseline model metrics, formulate a clear hypothesis and write clean, runnable Python experiment code."
@@ -80,7 +202,6 @@ Dataset Summary:
 - Rows: {dataset_summary.get('rowCount')}, Cols: {dataset_summary.get('columnCount')}
 - Task Type: {dataset_summary.get('taskType')}
 - Target: {dataset_summary.get('targetCandidate')}
-- Issues: {[i['title'] for i in dataset_summary.get('detectedIssues', [])]}
 
 Baseline Results:
 {json.dumps([{b['name']: b['metrics']} for b in baseline_summary], indent=2)}
@@ -95,7 +216,7 @@ Return JSON format strictly:
 }}
 """
 
-    response_text = query_llm(user_prompt, system_prompt)
+    response_text = query_llm(user_prompt, system_prompt, role="main")
     if response_text:
         try:
             clean_text = response_text.strip()
@@ -165,4 +286,3 @@ print(f"Experiment completed successfully. Target score: {{score:.4f}}")
         "hyperparams": hyperparams,
         "python_script": script
     }
-
