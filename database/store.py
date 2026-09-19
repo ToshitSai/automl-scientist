@@ -47,6 +47,7 @@ class ResearchStore:
             "error_analyses": {},
             "literature": {},
             "reports": {},
+            "sessions": {},
             "settings": {
                 "llmProvider": "Not configured",
                 "apiKeySet": False,
@@ -205,6 +206,40 @@ class ResearchStore:
 
     def get_report(self, project_id: str) -> Optional[str]:
         return self.data["reports"].get(project_id)
+
+    def get_session(self, session_id: str) -> Dict[str, Any]:
+        sid = session_id or "default-session"
+        sessions = self.data.setdefault("sessions", {})
+        if sid not in sessions:
+            sessions[sid] = {
+                "session_id": sid,
+                "last_user_message": None,
+                "last_assistant_message": None,
+                "last_topic": None,
+                "pending_action": None,
+                "active_project_id": None
+            }
+            self.save()
+        return sessions[sid]
+
+    def update_session(self, session_id: str, updates: Dict[str, Any]):
+        sid = session_id or "default-session"
+        sess = self.get_session(sid)
+        sess.update(updates)
+        self.save()
+
+    def set_pending_action(self, session_id: str, action_type: str, topic: Optional[str] = None, query: Optional[str] = None, project_id: Optional[str] = None):
+        self.update_session(session_id, {
+            "pending_action": {
+                "type": action_type,
+                "topic": topic,
+                "query": query,
+                "projectId": project_id
+            }
+        })
+
+    def clear_pending_action(self, session_id: str):
+        self.update_session(session_id, {"pending_action": None})
 
 store = ResearchStore()
 

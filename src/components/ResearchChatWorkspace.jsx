@@ -28,6 +28,7 @@ export default function ResearchChatWorkspace({
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [conversationId] = useState(() => 'conv-' + Math.random().toString(36).substring(2, 9));
   const chatBottomRef = useRef(null);
 
   const projectId = activeProject?.id;
@@ -82,7 +83,7 @@ export default function ResearchChatWorkspace({
 
     try {
       // 2. Call backend Intent Router endpoint
-      const res = await sendChatMessage(userText, projectId);
+      const res = await sendChatMessage(userText, projectId, conversationId);
       
       const assistantMsg = {
         id: Date.now() + 1,

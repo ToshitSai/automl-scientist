@@ -48,37 +48,8 @@ CONFIRMATION_PHRASES = [
     "yes please", "do it please", "please do that", "that sounds good", "yes do that", "ok do it", "yup", "do it now"
 ]
 
-class SessionContextStore:
-    def __init__(self):
-        self.sessions: Dict[str, Dict[str, Any]] = {}
-
-    def get_session(self, session_id: str) -> Dict[str, Any]:
-        sid = session_id or "default-session"
-        if sid not in self.sessions:
-            self.sessions[sid] = {
-                "session_id": sid,
-                "last_user_message": None,
-                "last_assistant_message": None,
-                "last_topic": None,
-                "pending_action": None,
-                "active_project_id": None
-            }
-        return self.sessions[sid]
-
-    def set_pending_action(self, session_id: str, action_type: str, topic: Optional[str] = None, query: Optional[str] = None, project_id: Optional[str] = None):
-        sess = self.get_session(session_id)
-        sess["pending_action"] = {
-            "type": action_type,
-            "topic": topic,
-            "query": query,
-            "projectId": project_id
-        }
-
-    def clear_pending_action(self, session_id: str):
-        sess = self.get_session(session_id)
-        sess["pending_action"] = None
-
-session_store = SessionContextStore()
+def get_session(session_id: Optional[str]) -> Dict[str, Any]:
+    return store.get_session(session_id or "default-session")
 
 def extract_topic(message: str) -> Optional[str]:
     msg_clean = message.strip().lower()
@@ -111,7 +82,7 @@ def classify_intent(message: str, active_project_id: Optional[str] = None, sessi
     msg_clean = message.strip().lower()
     msg_clean_nopunct = re.sub(r'[^\w\s]', '', msg_clean)
     
-    sess = session_store.get_session(session_id)
+    sess = get_session(session_id)
 
     # 1. CONFIRM_PENDING_ACTION (e.g. "yes", "yes do it", "go ahead", "do it", "sure")
     if msg_clean_nopunct in CONFIRMATION_PHRASES or any(msg_clean.startswith(prefix) for prefix in ["yes", "sure", "okay", "ok", "do it", "go ahead", "proceed", "let's do", "lets do", "sounds good", "please do"]):
@@ -173,11 +144,11 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
     Handles conversational user messages with 100% context awareness, pronoun resolution, and pending action execution.
     """
     sid = session_id or "default-session"
-    sess = session_store.get_session(sid)
-    sess["last_user_message"] = message
+    sess = get_session(sid)
+    store.update_session(sid, {"last_user_message": message})
 
     if active_project_id:
-        sess["active_project_id"] = active_project_id
+        store.update_session(sid, {"active_project_id": active_project_id})
 
     intent = classify_intent(message, active_project_id, sid)
     msg_clean = message.strip().lower()
@@ -194,7 +165,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             p_query = pending.get("query") or f"Investigate {p_topic}"
             p_proj = pending.get("projectId") or active_project_id
 
-            session_store.clear_pending_action(sid)
+            store.clear_pending_action(sid)
 
             if p_type == "START_RESEARCH":
                 return {
@@ -230,7 +201,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
     # 2. EXPLANATION
     elif intent == "EXPLANATION":
         topic = extract_topic(message) or "concept"
-        sess["last_topic"] = topic.lower()
+        store.update_session(sid, {"last_topic": topic.lower()})
 
         # Direct concept definition
         if topic.lower() in CONCEPT_KNOWLEDGE:
@@ -245,22 +216,22 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
         # Attach actionable offer & set pending action
         if topic.lower() == "python":
             offer = "\n\nI can also investigate how Python is used in modern AI research if you'd like."
-            session_store.set_pending_action(sid, "START_RESEARCH", topic="how Python is used in AI research", query="Investigate how Python is used in AI research")
+            store.set_pending_action(sid, "START_RESEARCH", topic="how Python is used in AI research", query="Investigate how Python is used in AI research")
         elif topic.lower() in ["xgboost", "gradient boosting"]:
             offer = "\n\nI can run a research study testing XGBoost model performance if you'd like."
-            session_store.set_pending_action(sid, "START_RESEARCH", topic="XGBoost model performance", query="Optimize XGBoost model performance")
+            store.set_pending_action(sid, "START_RESEARCH", topic="XGBoost model performance", query="Optimize XGBoost model performance")
         elif topic.lower() in ["artificial intelligence", "ai", "machine learning", "ml", "deep learning"]:
             offer = f"\n\nI can launch an autonomous research study investigating {topic.upper()} applications for you whenever you'd like."
-            session_store.set_pending_action(sid, "START_RESEARCH", topic=f"{topic.upper()} model optimization", query=f"Optimize {topic.upper()} predictive model performance")
+            store.set_pending_action(sid, "START_RESEARCH", topic=f"{topic.upper()} model optimization", query=f"Optimize {topic.upper()} predictive model performance")
         elif active_project_id:
             offer = f"\n\nI can test another model experiment to optimize {topic} for your study if you'd like."
-            session_store.set_pending_action(sid, "NEXT_EXPERIMENT", project_id=active_project_id)
+            store.set_pending_action(sid, "NEXT_EXPERIMENT", project_id=active_project_id)
         else:
             offer = f"\n\nI can investigate a dataset and train predictive models around {topic} if you'd like."
-            session_store.set_pending_action(sid, "START_RESEARCH", topic=f"{topic} research study", query=f"Investigate {topic} machine learning performance")
+            store.set_pending_action(sid, "START_RESEARCH", topic=f"{topic} research study", query=f"Investigate {topic} machine learning performance")
 
         resp_text = base_exp + offer
-        sess["last_assistant_message"] = resp_text
+        store.update_session(sid, {"last_assistant_message": resp_text})
 
         return {
             "intent": intent,
@@ -279,7 +250,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
                 "Python is particularly useful in AI research because its clean syntax allows researchers to rapidly construct and test algorithms, "
                 "while its unmatched library ecosystem (PyTorch, TensorFlow, Scikit-Learn, NumPy) provides battle-tested building blocks for model training and evaluation."
             )
-            sess["last_assistant_message"] = resp_text
+            store.update_session(sid, {"last_assistant_message": resp_text})
             return {
                 "intent": intent,
                 "response": resp_text,
@@ -301,7 +272,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
             f"The second approach performed better because it was able to capture non-linear relationships and identify subtle transaction patterns that the benchmark model missed."
         )
 
-        sess["last_assistant_message"] = answer
+        store.update_session(sid, {"last_assistant_message": answer})
         return {
             "intent": intent,
             "response": answer,
@@ -312,11 +283,10 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
     # 4. RESEARCH_START
     elif intent == "RESEARCH_START":
         topic = message.strip()
-        sess["last_topic"] = topic
-        sess["pending_action"] = None
+        store.update_session(sid, {"last_topic": topic, "pending_action": None})
         
         resp_text = f"Absolutely. I'll investigate {topic} for you.\n\nI'll first understand the data and existing research, then I'll test different approaches and explain what I discover."
-        sess["last_assistant_message"] = resp_text
+        store.update_session(sid, {"last_assistant_message": resp_text})
 
         return {
             "intent": intent,
@@ -328,7 +298,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
 
     # 5. RESEARCH_CONTROL
     elif intent == "RESEARCH_CONTROL":
-        sess["pending_action"] = None
+        store.clear_pending_action(sid)
         if "stop" in msg_clean or "pause" in msg_clean:
             if active_project_id:
                 store.set_control_signal(active_project_id, "STOP")
@@ -357,7 +327,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
 
     # 6. REPORT_REQUEST
     elif intent == "REPORT_REQUEST":
-        sess["pending_action"] = None
+        store.clear_pending_action(sid)
         return {
             "intent": intent,
             "response": "Here is the scientific research report compiling our verified experimental findings.",
@@ -375,7 +345,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
         }
 
     # 8. CASUAL_CHAT
-    sess["pending_action"] = None
+    store.clear_pending_action(sid)
     if "what can you do" in msg_clean or "help" in msg_clean:
         content = (
             "I am AI Scientist, your autonomous machine learning research assistant. 👋\n\n"
@@ -386,7 +356,7 @@ def handle_intent_message(message: str, active_project_id: Optional[str] = None,
     else:
         content = "Hi! 👋 I'm AI Scientist, your autonomous research assistant. What would you like me to investigate?"
     
-    sess["last_assistant_message"] = content
+    store.update_session(sid, {"last_assistant_message": content})
 
     return {
         "intent": "CASUAL_CHAT",
