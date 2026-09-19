@@ -152,30 +152,32 @@ def update_settings(payload: dict):
 async def chat_endpoint(payload: dict):
     """
     Conversational AI Chat Endpoint powered by Intent Router.
-    Routes incoming user messages into intents (CASUAL_CHAT, EXPLANATION, RESEARCH_START, RESEARCH_FOLLOWUP, RESEARCH_CONTROL, REPORT_REQUEST, TECHNICAL_DETAILS).
+    Routes incoming user messages into intents (CONFIRM_PENDING_ACTION, EXPLANATION, RESEARCH_START, RESEARCH_FOLLOWUP, RESEARCH_CONTROL, REPORT_REQUEST, TECHNICAL_DETAILS, CASUAL_CHAT).
     Ensures casual chat does NOT mutate research state or create unwanted projects.
     """
     from backend.intent_router import handle_intent_message
     message = payload.get("message", "").strip()
     active_project_id = payload.get("projectId")
+    conversation_id = payload.get("conversationId", "default-session")
 
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    res = handle_intent_message(message, active_project_id)
+    res = handle_intent_message(message, active_project_id, conversation_id)
     action = res.get("action")
 
     if action == "START_RESEARCH":
         import uuid
         project_id = f"proj-{uuid.uuid4().hex[:6]}"
-        dataset_name = "Auto: credit_card_fraud_benchmark.csv"
+        research_goal = res.get("researchQuery") or message
+        dataset_name = f"Auto: {research_goal[:20].strip().replace(' ', '_')}_benchmark.csv"
         dataset_path = os.path.join(DATASETS_DIR, f"{project_id}_auto.csv")
         _generate_auto_benchmark_dataset(dataset_path)
 
         project = store.create_project(
             project_id=project_id,
-            name=f"Research: {message[:35]}",
-            objective=message,
+            name=f"Research: {research_goal[:35]}",
+            objective=research_goal,
             dataset_name=dataset_name,
             budget=60,
             provider="Heuristic / Rule-based",
