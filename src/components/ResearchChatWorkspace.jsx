@@ -387,15 +387,30 @@ export default function ResearchChatWorkspace({
                 {/* FINAL COMPLETION SUMMARY */}
                 {isCompleted && (
                   <div className="bg-[#0D1520] border border-cyan-500/30 rounded-xl p-4 space-y-3">
-                    <p className="text-xs text-slate-200">
-                      All tests are complete. I've prepared a comprehensive scientific report summarizing the methodology and findings.
+                    <p className="text-xs text-slate-200 leading-relaxed">
+                      Research complete. I tested several approaches and found that the strongest approach performed better than the initial benchmark model. The main reason was that it detected more unusual transaction patterns. I've prepared the complete research report for you.
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        onClick={() => setShowTechnicalDetails(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#1A2232] hover:bg-[#253147] text-slate-200 border border-[#2B364A] font-semibold text-xs transition-all cursor-pointer"
+                      >
+                        🔍 View findings
+                      </button>
                       <button
                         onClick={() => setActiveTab('report')}
                         className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer"
                       >
-                        📄 View Report
+                        📄 View report
+                      </button>
+                      <button
+                        onClick={() => {
+                          const input = document.querySelector('input[placeholder*="Ask AI Scientist"]');
+                          if (input) input.focus();
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#131822] hover:bg-[#1C2536] text-slate-300 border border-[#212B3B] text-xs transition-all cursor-pointer"
+                      >
+                        💬 Ask a follow-up
                       </button>
                     </div>
                   </div>
