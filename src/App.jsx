@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import ResearchStartScreen from './components/ResearchStartScreen';
 import ResearchChatWorkspace from './components/ResearchChatWorkspace';
 import SettingsModal from './components/SettingsModal';
-import { fetchProjects, fetchProjectDetails, sendChatMessage, fetchSettings } from './api';
+import { fetchProjects, fetchProjectDetails, sendChatMessage, fetchSettings, approveDataset } from './api';
 
 export default function App() {
   const [projects, setProjects] = useState([]);
@@ -11,6 +11,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [dockerReady, setDockerReady] = useState(false);
   const [llmConfigured, setLlmConfigured] = useState(false);
   const [isInChatWorkspace, setIsInChatWorkspace] = useState(false);
@@ -59,7 +60,11 @@ export default function App() {
         id: Date.now() + 1,
         role: 'assistant',
         content: res.response,
-        intent: res.intent
+        intent: res.intent,
+        action: res.action,
+        datasets: res.candidates || null,
+        recommendation: res.recommendation || null,
+        researchQuery: res.researchQuery || null
       };
       setChatMessages(prev => [...prev, assistantMsg]);
 
@@ -74,6 +79,30 @@ export default function App() {
       ]);
     } finally {
       setIsLaunching(false);
+    }
+  };
+
+  const handleApproveDataset = async (repoId, researchQuery) => {
+    if (!repoId || isApproving) return;
+    setIsApproving(true);
+    setIsInChatWorkspace(true);
+    try {
+      const res = await approveDataset(repoId, researchQuery || `Improve modeling on ${repoId}`);
+      setChatMessages(prev => [
+        ...prev,
+        { id: Date.now() + 2, role: 'assistant', content: res.response || `Loading ${repoId}...` }
+      ]);
+      if (res.project) {
+        setActiveProject(res.project);
+        await loadProjects();
+      }
+    } catch (err) {
+      setChatMessages(prev => [
+        ...prev,
+        { id: Date.now() + 2, role: 'assistant', content: `Sorry, I couldn't load that dataset: ${err.message}` }
+      ]);
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -115,6 +144,8 @@ export default function App() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             chatMessages={chatMessages}
             setChatMessages={setChatMessages}
+            onApproveDataset={handleApproveDataset}
+            isApproving={isApproving}
           />
         )}
       </main>

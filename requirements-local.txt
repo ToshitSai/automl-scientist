@@ -1,0 +1,24 @@
+# =============================================================================
+# LOCAL DEVELOPMENT — full research pipeline dependencies.
+# =============================================================================
+# Install with:  pip install -r requirements-local.txt
+#
+# These are required to actually download Hugging Face datasets, run real EDA,
+# train baseline/experiment models (scikit-learn + XGBoost) and execute the
+# sandboxed experiment scripts locally via `uvicorn backend.main:app`.
+#
+# They are deliberately excluded from requirements.txt, which is the minimal
+# subset the Vercel serverless deployment installs. The heavy/long-running
+# training path is local-only by design (see README "Known limitations").
+-r requirements.txt
+
+# ---------- Data / ML runtime ----------
+pandas>=2.2.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+pyarrow>=15.0.0
+
+# ---------- Testing ----------
+pytest>=8.0.0
+httpx>=0.27.0

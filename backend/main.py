@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import backend.config
 from database.store import store
+from backend import hf_datasets as hf
 
 app = FastAPI(title="AutoML Scientist Engine API", version="2.0.0")
 
@@ -165,6 +166,8 @@ async def chat_endpoint(payload: dict):
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
+    store.record_message(conversation_id, "user", message, research_id=active_project_id)
+
     res = handle_intent_message(
         message=message, 
         active_project_id=active_project_id, 
@@ -175,33 +178,215 @@ async def chat_endpoint(payload: dict):
     action = res.get("action")
 
     if action == "START_RESEARCH":
-        import uuid
-        project_id = f"proj-{uuid.uuid4().hex[:6]}"
+        # Approval-gated dataset discovery. We NEVER auto-train on a randomly
+        # generated dataset during normal chat. Instead we search Hugging Face,
+        # compare real candidates, recommend one, and wait for the user to approve.
         research_goal = res.get("researchQuery") or message
-        dataset_name = f"Auto: {research_goal[:20].strip().replace(' ', '_')}_benchmark.csv"
-        dataset_path = os.path.join(DATASETS_DIR, f"{project_id}_auto.csv")
-        _generate_auto_benchmark_dataset(dataset_path)
-
-        project = store.create_project(
-            project_id=project_id,
-            name=f"Research: {research_goal[:35]}",
-            objective=research_goal,
-            dataset_name=dataset_name,
-            budget=60,
-            provider="Heuristic / Rule-based",
-            max_experiments=5
-        )
+        hf_ref = res.get("hfRef") or hf.parse_hf_reference(message)
 
         try:
-            from agents.orchestrator import run_research_pipeline_async
-            run_research_pipeline_async(project_id, dataset_path)
-        except Exception as err:
-            print(f"[CHAT RESEARCH LAUNCH WARNING]: {err}")
+            if hf_ref.get("kind") == "specific":
+                repo_id = hf_ref["repo_id"]
+                info = hf.inspect_dataset(repo_id)
+                cand = _info_to_candidate(info)
+                cand["userSelected"] = True
+                cand["score"], cand["reasons"] = hf.score_candidate(cand, research_goal)
+                cand["reasons"] = ["You linked this dataset directly, so I'll use it exactly as provided."] + cand["reasons"]
+                res.update({
+                    "action": "RECOMMEND_DATASETS",
+                    "researchQuery": research_goal,
+                    "candidates": [cand],
+                    "recommendation": cand,
+                    "response": (
+                        f"I recognized the Hugging Face dataset you linked: {repo_id}.\n\n"
+                        f"It has {cand.get('featureCount') or 'several'} features, a clear "
+                        f"'{cand.get('targetColumn')}' target, and a {cand.get('license') or 'declared'} license. "
+                        f"Since you chose it explicitly, I can load it directly."
+                    ),
+                })
+            else:
+                lead = f"I'll look for datasets that could help {research_goal.lower()}.\n\n"
+                cands = hf.search_datasets(research_goal, limit=6)
+                comp = hf.compare_and_recommend(cands, research_goal, top_n=4)
+                rec = comp.get("recommendation")
+                if rec:
+                    try:
+                        info = hf.inspect_dataset(rec["repoId"])
+                        rec["rowCountPreview"] = info.get("rowCount")
+                        rec["targetColumn"] = info.get("targetColumn")
+                        rec["featureCount"] = info.get("featureCount")
+                        rec["minorityClassPct"] = info.get("minorityClassPct")
+                        rec["classDistribution"] = info.get("classDistribution")
+                        rec["splits"] = [s for s in (info.get("availableSplits") or {}).keys() if s in ("train", "test", "validation")]
+                    except Exception as inspect_err:
+                        print(f"[DATASET INSPECT WARNING]: {inspect_err}")
 
-        res["projectId"] = project_id
-        res["project"] = store.get_project(project_id)
+                summary = f"I found {len(comp['candidates'])} relevant datasets.\n\n"
+                if rec:
+                    summary += (
+                        f"I recommend starting with {rec['repoId']} because "
+                        f"{(rec['reasons'][0] if rec['reasons'] else 'it fits the task well').lower()}\n\n"
+                        f"Choose a dataset below to continue."
+                    )
+                res.update({
+                    "action": "RECOMMEND_DATASETS",
+                    "researchQuery": research_goal,
+                    "candidates": comp["candidates"],
+                    "recommendation": rec,
+                    "response": lead + summary,
+                })
+        except Exception as disc_err:
+            print(f"[DATASET DISCOVERY ERROR]: {disc_err}")
+            res.update({
+                "action": "NONE",
+                "response": (
+                    f"I tried to search Hugging Face for suitable datasets but ran into a problem: {disc_err}. "
+                    f"You can paste a specific dataset URL (e.g. https://huggingface.co/datasets/owner/name) and I'll load it directly."
+                ),
+            })
+
+    elif action == "APPROVE_DATASET":
+        # Confirmation of a previously recommended dataset.
+        repo_id = res.get("repoId")
+        if repo_id:
+            approved = _approve_dataset(repo_id, res.get("researchQuery") or message)
+            res.update(approved)
+
+    store.record_message(
+        conversation_id, "assistant", res.get("response", ""),
+        intent=res.get("intent"), topic=res.get("lastTopic"),
+        research_id=res.get("projectId") or active_project_id,
+        pending_action=res.get("pendingAction"),
+    )
 
     return res
+
+
+def _info_to_candidate(info: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert a full inspect_dataset() result into a comparison card shape."""
+    return {
+        "repoId": info.get("repoId"),
+        "author": info.get("author"),
+        "name": info.get("name"),
+        "downloads": info.get("downloads"),
+        "likes": info.get("likes"),
+        "license": info.get("license"),
+        "sizeCategory": info.get("sizeCategory"),
+        "format": info.get("format"),
+        "taskCategories": info.get("taskCategories"),
+        "topics": info.get("topics"),
+        "description": info.get("description"),
+        "url": info.get("url"),
+        "revision": info.get("revision"),
+        "rowCountPreview": info.get("rowCount"),
+        "targetColumn": info.get("targetColumn"),
+        "featureCount": info.get("featureCount"),
+        "minorityClassPct": info.get("minorityClassPct"),
+        "classDistribution": info.get("classDistribution"),
+        "splits": [s for s in (info.get("availableSplits") or {}).keys() if s in ("train", "test", "validation")],
+    }
+
+
+def _approve_dataset(repo_id: str, research_goal: str, budget: int = 60, max_experiments: int = 5) -> Dict[str, Any]:
+    """Download the approved dataset, create a project, and launch the real pipeline."""
+    import uuid
+    from agents.orchestrator import run_research_pipeline_async
+
+    dl = hf.download_dataset(repo_id)
+    project_id = f"proj-{uuid.uuid4().hex[:6]}"
+
+    meta = {
+        "source": "huggingface",
+        "url": dl["url"],
+        "repoId": dl["repoId"],
+        "license": dl.get("license"),
+        "revision": dl.get("revision"),
+        "splits": list(dl.get("splits", {}).keys()),
+        "splitStrategy": ("Dataset's own provided train/test split"
+                          if dl.get("testPath") else "Stratified 80/20 train/test split (seed 42)"),
+        "description": None,
+    }
+
+    store.create_project(
+        project_id=project_id,
+        name=f"Research: {research_goal[:35]}",
+        objective=research_goal,
+        dataset_name=repo_id,
+        budget=budget,
+        provider="Heuristic / Rule-based",
+        max_experiments=max_experiments,
+    )
+
+    try:
+        run_research_pipeline_async(project_id, dl["primaryPath"], meta, dl.get("testPath"))
+    except Exception as err:
+        print(f"[APPROVE LAUNCH WARNING]: {err}")
+        store.add_agent_log(project_id, "RESEARCH_ORCHESTRATOR", f"Launch error: {err}", "FAILED")
+        store.update_project(project_id, {"status": "FAILED", "errorDetail": str(err)})
+
+    return {
+        "action": "START_RESEARCH",
+        "projectId": project_id,
+        "project": store.get_project(project_id),
+        "dataset": {
+            "repoId": repo_id,
+            "url": dl["url"],
+            "splits": dl.get("rowCounts"),
+            "targetColumn": dl.get("targetColumn"),
+            "license": dl.get("license"),
+            "revision": dl.get("revision"),
+        },
+        "response": f"Approved. I've loaded {repo_id} and I'm now analyzing it and training the first models.",
+    }
+
+@app.get("/api/datasets/search")
+def datasets_search(q: str = Query(..., description="Research goal / search query"), limit: int = Query(6)):
+    """Search Hugging Face for candidate datasets and rank them for the goal."""
+    try:
+        cands = hf.search_datasets(q, limit=limit)
+        comp = hf.compare_and_recommend(cands, q, top_n=4)
+        return {"success": True, "goal": q, **comp}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Dataset search failed: {e}")
+
+@app.post("/api/datasets/inspect")
+def datasets_inspect(payload: dict):
+    """Inspect a specific dataset (by URL or repo id) and return REAL metadata."""
+    ref = payload.get("url") or payload.get("repoId") or ""
+    parsed = hf.parse_hf_reference(ref)
+    # Trust the parser: it already recognises both HF URLs and bare "owner/name"
+    # repo ids as kind=='specific'. Anything else (non-HF URLs, the bare
+    # /datasets discovery page, free text) is a client error, not an upstream
+    # failure — so return 400 instead of attempting a fetch that would 502.
+    repo_id = parsed.get("repo_id")
+    if parsed.get("kind") != "specific" or not repo_id:
+        raise HTTPException(status_code=400, detail="Please provide a specific dataset URL like https://huggingface.co/datasets/owner/name or a repo id like owner/name")
+    try:
+        info = hf.inspect_dataset(repo_id)
+        return {"success": True, "info": info, "card": _info_to_candidate(info)}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Dataset inspection failed: {e}")
+
+@app.post("/api/datasets/approve")
+def datasets_approve(payload: dict):
+    """User approved a dataset: download it, create a project, launch the real pipeline."""
+    repo_id = payload.get("repoId")
+    if not repo_id:
+        raise HTTPException(status_code=400, detail="repoId is required to approve a dataset.")
+    research_goal = payload.get("researchQuery") or f"Improve modeling on {repo_id}"
+    budget = int(payload.get("budget", 60))
+    max_experiments = int(payload.get("maxExperiments", 5))
+    try:
+        return {"success": True, **_approve_dataset(repo_id, research_goal, budget, max_experiments)}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail=f"Dataset approval/loading failed: {e}")
+
+@app.get("/api/conversations/{conversation_id}/messages")
+def get_conversation_messages(conversation_id: str):
+    """Return the stored per-message history for a conversation (section 3)."""
+    return store.get_messages(conversation_id)
+
 
 @app.get("/api/projects")
 def list_projects():

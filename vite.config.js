@@ -14,6 +14,21 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true
       }
+    },
+    watch: {
+      ignored: [
+        '**/backend/**',
+        '**/database/**',
+        '**/agents/**',
+        '**/sandbox/**',
+        '**/datasets/**',
+        '**/uploaded_datasets/**',
+        '**/__pycache__/**',
+        '**/*.py',
+        '**/*.pyc',
+        '**/*.parquet',
+        '**/*.csv'
+      ]
     }
   }
 });

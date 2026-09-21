@@ -88,6 +88,32 @@ export async function sendControlSignal(projectId, signal) {
   });
 }
 
+export async function searchDatasets(query, limit = 6) {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  return safeFetchJson(`${API_BASE}/datasets/search?${params.toString()}`);
+}
+
+export async function inspectDataset(urlOrRepoId) {
+  return safeFetchJson(`${API_BASE}/datasets/inspect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: urlOrRepoId })
+  });
+}
+
+export async function approveDataset(repoId, researchQuery, opts = {}) {
+  return safeFetchJson(`${API_BASE}/datasets/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      repoId,
+      researchQuery,
+      budget: opts.budget ?? 60,
+      maxExperiments: opts.maxExperiments ?? 5
+    })
+  });
+}
+
 export async function fetchProjectDataset(id) {
   try {
     return await safeFetchJson(`${API_BASE}/projects/${id}/dataset`);

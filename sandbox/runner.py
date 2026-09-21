@@ -14,7 +14,8 @@ def is_docker_available() -> bool:
     except Exception:
         return False
 
-def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_sec: int = 60) -> Dict[str, Any]:
+def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_sec: int = 60,
+                                 extra_env: dict = None) -> Dict[str, Any]:
     """
     Executes an experiment script in an isolated environment.
     Supports Docker container isolation if available, with automatic fallback
@@ -22,6 +23,7 @@ def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_se
     """
     docker_ready = is_docker_available()
     sandbox_mode = "Docker Container (Isolated)" if docker_ready else "Process Sandbox (Subprocess isolation)"
+    extra_env = extra_env or {}
 
     with tempfile.TemporaryDirectory() as temp_dir:
         script_file = os.path.join(temp_dir, "experiment.py")
@@ -45,9 +47,13 @@ def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_se
                     "--cpus=2",
                     "--memory=2g",
                     "--network=none",
-                    "python:3.11-slim",
-                    "python", "/app/experiment.py"
+                    "-e", "DATASET_PATH=/app/dataset.csv",
+                    "-e", f"METRICS_PATH=/app/metrics.json",
                 ]
+                for k, v in extra_env.items():
+                    if v is not None:
+                        cmd += ["-e", f"{k}={v}"]
+                cmd += ["python:3.11-slim", "python", "/app/experiment.py"]
                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
                 stdout = proc.stdout
                 stderr = proc.stderr
@@ -64,6 +70,9 @@ def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_se
             env["DATASET_PATH"] = dataset_path
             env["METRICS_PATH"] = metrics_file
             env["PYTHONDONTWRITEBYTECODE"] = "1"
+            for k, v in extra_env.items():
+                if v is not None:
+                    env[k] = str(v)
 
             try:
                 proc = subprocess.run(

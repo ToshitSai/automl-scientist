@@ -2,6 +2,8 @@ node_modules
 dist
 upstream_ai_scientist_v2
 .env
+.env.local
+.env*.local
 .vercel
 experiments/
 uploaded_datasets/

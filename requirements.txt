@@ -1,3 +1,18 @@
+# =============================================================================
+# Vercel serverless runtime dependencies — KEEP THIS MINIMAL.
+# =============================================================================
+# This file is what the Vercel Python runtime (api/index.py) installs. The
+# FastAPI app and the conversational API (chat / intent routing / explanations /
+# HF dataset *search*) import and run on these three packages plus the stdlib.
+#
+# The heavy ML/training stack (pandas, scikit-learn, xgboost, pyarrow) is NOT
+# listed here on purpose:
+#   * it blows past Vercel's ~250MB serverless bundle limit and build timeouts,
+#   * dataset download + model training are long-running and cannot complete
+#     within a serverless function's execution window,
+#   * the persistent store is an ephemeral local file on serverless anyway.
+# For local development (real dataset loading + training), install the full
+# stack from requirements-local.txt instead.
 fastapi==0.110.0
 uvicorn==0.28.0
 python-multipart==0.0.9

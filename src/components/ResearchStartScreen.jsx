@@ -187,8 +187,8 @@ export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) 
           <span className="text-slate-500 text-xs block w-full text-center mb-1">Try asking AI Scientist:</span>
           {[
             "Improve credit-card fraud detection",
-            "Optimize churn prediction for imbalanced data",
-            "Forecast housing prices with feature selection"
+            "https://huggingface.co/datasets/gusdelact/credit-card-fraud-curated",
+            "Optimize churn prediction for imbalanced data"
           ].map((prompt, idx) => (
             <button
               key={idx}
@@ -198,9 +198,12 @@ export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) 
               }}
               className="px-3 py-1.5 rounded-full bg-[#121722] hover:bg-[#1A2232] border border-[#212B3B] text-slate-300 hover:text-slate-100 transition-all text-xs cursor-pointer shadow-sm"
             >
-              "{prompt}"
+              {prompt.startsWith('http') ? '🔗 Load a Hugging Face fraud dataset' : `"${prompt}"`}
             </button>
           ))}
+          <span className="text-slate-600 text-[11px] block w-full text-center mt-1">
+            Tip: paste any Hugging Face dataset URL to load it directly.
+          </span>
         </div>
 
       </div>

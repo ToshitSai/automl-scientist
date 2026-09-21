@@ -16,7 +16,9 @@ export default function ResearchChatWorkspace({
   onNewResearch, 
   onOpenSettings,
   chatMessages,
-  setChatMessages 
+  setChatMessages,
+  onApproveDataset,
+  isApproving
 }) {
   const [activeTab, setActiveTab] = useState('research'); // 'research' | 'report'
   const [datasetReport, setDatasetReport] = useState(null);
@@ -27,6 +29,7 @@ export default function ResearchChatWorkspace({
   const [reportMd, setReportMd] = useState(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [chatInput, setChatInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [lastTopic, setLastTopic] = useState(null);
   const [conversationId] = useState(() => 'conv-' + Math.random().toString(36).substring(2, 9));
@@ -97,7 +100,11 @@ export default function ResearchChatWorkspace({
         id: Date.now() + 1,
         role: 'assistant',
         content: res.response,
-        intent: res.intent
+        intent: res.intent,
+        action: res.action,
+        datasets: res.candidates || null,
+        recommendation: res.recommendation || null,
+        researchQuery: res.researchQuery || null
       };
 
       setChatMessages(prev => [...prev, assistantMsg]);
@@ -125,6 +132,19 @@ export default function ResearchChatWorkspace({
   };
 
   const stageStates = activeProject?.stageStates || {};
+
+  // Pick the real best baseline (highest PR-AUC, the right metric under imbalance).
+  const completedBaselines = (baselines || []).filter(b => b.status === 'COMPLETED');
+  const bestBaseline = completedBaselines.length
+    ? completedBaselines.reduce((a, b) => {
+        const av = (a.metrics && (a.metrics.pr_auc ?? a.metrics.f1)) || 0;
+        const bv = (b.metrics && (b.metrics.pr_auc ?? b.metrics.f1)) || 0;
+        return bv > av ? b : a;
+      })
+    : null;
+  const bm = bestBaseline?.metrics || {};
+  const pct = (v) => (typeof v === 'number' ? `${(v * 100).toFixed(1)}%` : '—');
+  const isFraudTask = bestBaseline && (bm.pr_auc != null || bm.recall != null);
 
   const progressItems = [
     { key: 'literature_search', label: 'Looking at existing research', state: stageStates.literature_search },
@@ -301,6 +321,16 @@ export default function ResearchChatWorkspace({
                     <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
                       {msg.content}
                     </div>
+
+                    {msg.datasets && msg.datasets.length > 0 && (
+                      <DatasetCards
+                        datasets={msg.datasets}
+                        recommendation={msg.recommendation}
+                        researchQuery={msg.researchQuery}
+                        onApprove={onApproveDataset}
+                        isApproving={isApproving}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -341,36 +371,64 @@ export default function ResearchChatWorkspace({
                 {datasetReport && (
                   <div className="space-y-2 border-b border-[#1E293B]/60 pb-4 text-xs text-slate-300 leading-relaxed">
                     <p>
-                      I've finished understanding the dataset (<span className="font-semibold text-slate-100">{datasetReport.filename}</span>). It contains <span className="font-semibold text-slate-100">{datasetReport.rowCount.toLocaleString()}</span> records across <span className="font-semibold text-slate-100">{datasetReport.columnCount}</span> features.
+                      I've loaded the dataset{' '}
+                      <span className="font-semibold text-slate-100">{datasetReport.repoId || datasetReport.filename}</span>.
+                      It contains about{' '}
+                      <span className="font-semibold text-slate-100">{(datasetReport.rowCount || 0).toLocaleString()}</span> records
+                      with <span className="font-semibold text-slate-100">{(datasetReport.columnCount || 0) - 1}</span> features.
                     </p>
+                    {datasetReport.targetCandidate && (
+                      <p>
+                        The thing I'm predicting is{' '}
+                        <span className="font-semibold text-slate-100">{datasetReport.targetCandidate}</span>.
+                        {datasetReport.minorityClassPct != null && (
+                          <> The positive class makes up only{' '}
+                            <span className="font-semibold text-amber-300">{datasetReport.minorityClassPct}%</span> of the data.</>
+                        )}
+                      </p>
+                    )}
+                    {datasetReport.isImbalanced && (
+                      <p className="text-slate-400">
+                        That's highly imbalanced, so plain accuracy would be misleading — I'll judge the models on
+                        recall and PR-AUC instead.
+                      </p>
+                    )}
+                    {(datasetReport.license || datasetReport.sourceUrl) && (
+                      <p className="text-[11px] text-slate-500">
+                        Source: {datasetReport.source || 'dataset'}
+                        {datasetReport.license && <> · License: {datasetReport.license}</>}
+                        {datasetReport.revision && <> · Version: {String(datasetReport.revision).slice(0, 8)}</>}
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {/* STEP 2: BASELINE RESULTS CARD */}
-                {baselines.length > 0 && (
+                {bestBaseline && (
                   <div className="space-y-3 border-b border-[#1E293B]/60 pb-4">
                     <p className="text-xs text-slate-300">
-                      I've completed the first test using <span className="font-semibold text-slate-100">{activeProject.bestModel}</span>.
+                      I've tested the first models. The strongest starting point was{' '}
+                      <span className="font-semibold text-slate-100">{bestBaseline.name}</span>.
                     </p>
 
                     <div className="bg-[#0B0F17] border border-[#1E293B] rounded-xl p-4 space-y-3">
-                      <div className="text-xs font-semibold text-slate-300">First test metrics</div>
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className="p-2.5 rounded-lg bg-[#121722] border border-[#212B3B]">
-                          <div className="text-slate-400 text-[10px]">Precision</div>
-                          <div className="text-sm font-bold text-slate-100">95.2%</div>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-[#121722] border border-[#212B3B]">
-                          <div className="text-slate-400 text-[10px]">Recall</div>
-                          <div className="text-sm font-bold text-cyan-400">91.6%</div>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-[#121722] border border-[#212B3B]">
-                          <div className="text-slate-400 text-[10px]">F1 Score</div>
-                          <div className="text-sm font-bold text-emerald-400">93.4%</div>
-                        </div>
+                      <div className="text-xs font-semibold text-slate-300">First model results</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                        <MetricTile label="Precision" value={pct(bm.precision)} />
+                        <MetricTile label="Recall" value={pct(bm.recall)} highlight />
+                        <MetricTile label="F1 Score" value={pct(bm.f1)} />
+                        <MetricTile label="PR-AUC" value={pct(bm.pr_auc)} />
                       </div>
-                      <div className="text-[11px] text-slate-400 pt-1 italic">
-                        💡 <span className="font-medium text-slate-300">Explanation:</span> Recall means how many of the target cases the model successfully detected.
+                      {isFraudTask && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-xs">
+                          <MetricTile label="ROC-AUC" value={pct(bm.roc_auc)} />
+                          <MetricTile label="False Positive Rate" value={pct(bm.fpr)} />
+                          <MetricTile label="False Negative Rate" value={pct(bm.fnr)} />
+                        </div>
+                      )}
+                      <div className="text-[11px] text-slate-400 pt-1 italic space-y-1">
+                        <p>💡 <span className="font-medium text-slate-300">Recall</span> = how many of the actual fraud cases the model caught. <span className="font-medium text-slate-300">Precision</span> = how many of its fraud alerts were real.</p>
+                        <p>Because fraud is rare here, plain accuracy would look deceptively high — so I focus on PR-AUC and recall instead.</p>
                       </div>
                     </div>
                   </div>
@@ -491,6 +549,115 @@ export default function ResearchChatWorkspace({
         )}
 
       </div>
+    </div>
+  );
+}
+
+function DatasetCards({ datasets, recommendation, researchQuery, onApprove, isApproving }) {
+  const recId = recommendation?.repoId;
+  const fmtRows = (n) => (typeof n === 'number' ? n.toLocaleString() : null);
+
+  return (
+    <div className="space-y-3 pt-1">
+      {datasets.map((d) => {
+        const isRec = d.repoId === recId;
+        const rows = fmtRows(d.rowCountPreview);
+        return (
+          <div
+            key={d.repoId}
+            className={`rounded-xl border p-4 space-y-2.5 transition-all ${
+              isRec
+                ? 'bg-[#0D1A20] border-cyan-500/40 shadow-md'
+                : 'bg-[#0B0F17] border-[#1E293B]'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-slate-100 truncate">{d.repoId}</span>
+                  {isRec && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                      ★ Recommended
+                    </span>
+                  )}
+                  {d.userSelected && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      You linked this
+                    </span>
+                  )}
+                </div>
+                {d.description && (
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{d.description}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+              <Meta label="Rows" value={rows || d.sizeCategory || '—'} />
+              <Meta label="Features" value={d.featureCount != null ? d.featureCount : '—'} />
+              <Meta label="Target" value={d.targetColumn || '—'} />
+              <Meta label="License" value={d.license || 'unspecified'} />
+              <Meta label="Format" value={d.format || '—'} />
+              <Meta label="Splits" value={(d.splits && d.splits.length) ? d.splits.join(', ') : '—'} />
+            </div>
+
+            {d.minorityClassPct != null && (
+              <div className="text-[11px] text-amber-300/90">
+                Imbalanced: the positive class is only {d.minorityClassPct}% of records.
+              </div>
+            )}
+
+            {d.reasons && d.reasons.length > 0 && (
+              <ul className="space-y-0.5">
+                {d.reasons.slice(0, 4).map((r, i) => (
+                  <li key={i} className="text-[11px] text-slate-400 flex gap-1.5">
+                    <span className="text-cyan-500">•</span>
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-slate-500">
+                {(d.downloads != null) && `${d.downloads.toLocaleString()} downloads`}
+                {(d.likes != null && d.likes > 0) && ` · ${d.likes} likes`}
+              </span>
+              <button
+                onClick={() => onApprove && onApprove(d.repoId, researchQuery)}
+                disabled={isApproving}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  isApproving
+                    ? 'bg-[#1C2536] text-slate-500 cursor-not-allowed'
+                    : isRec
+                      ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer shadow-md'
+                      : 'bg-[#1A2232] hover:bg-[#253147] text-slate-200 border border-[#2B364A] cursor-pointer'
+                }`}
+              >
+                {isApproving ? 'Loading…' : 'Use this dataset'}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Meta({ label, value }) {
+  return (
+    <div className="p-2 rounded-lg bg-[#121722] border border-[#212B3B]">
+      <div className="text-slate-500 text-[9px] uppercase tracking-wide">{label}</div>
+      <div className="text-slate-200 font-medium truncate" title={String(value)}>{value}</div>
+    </div>
+  );
+}
+
+function MetricTile({ label, value, highlight }) {
+  return (
+    <div className="p-2.5 rounded-lg bg-[#121722] border border-[#212B3B]">
+      <div className="text-slate-400 text-[10px]">{label}</div>
+      <div className={`text-sm font-bold ${highlight ? 'text-cyan-400' : 'text-slate-100'}`}>{value}</div>
     </div>
   );
 }

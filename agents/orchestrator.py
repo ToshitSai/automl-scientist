@@ -32,13 +32,13 @@ def get_experiments_dir():
 
 EXPERIMENTS_BASE_DIR = get_experiments_dir()
 
-def run_research_pipeline(project_id: str, dataset_path: str):
+def run_research_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
     """Executes the autonomous ML research pipeline synchronously."""
-    _orchestrate_pipeline(project_id, dataset_path)
+    _orchestrate_pipeline(project_id, dataset_path, dataset_meta, test_path)
 
-def run_research_pipeline_async(project_id: str, dataset_path: str):
+def run_research_pipeline_async(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
     """Executes the autonomous ML research pipeline asynchronously in a background thread."""
-    thread = threading.Thread(target=_orchestrate_pipeline, args=(project_id, dataset_path), daemon=True)
+    thread = threading.Thread(target=_orchestrate_pipeline, args=(project_id, dataset_path, dataset_meta, test_path), daemon=True)
     thread.start()
 
 def _check_control_signal(project_id: str) -> str:
@@ -56,7 +56,7 @@ def _check_control_signal(project_id: str) -> str:
 
     return signal
 
-def _orchestrate_pipeline(project_id: str, dataset_path: str):
+def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
     proj = store.get_project(project_id)
     if not proj:
         return
@@ -123,16 +123,29 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
         store.add_event(project_id, "dataset.analysis.started")
         store.add_agent_log(project_id, "DATASET_AGENT", f"Inspecting dataset at {os.path.basename(dataset_path)}...")
         try:
-            report = analyze_dataset(dataset_path)
+            report = analyze_dataset(dataset_path, dataset_meta)
             store.save_dataset_report(project_id, report)
             saved_report = store.get_dataset_report(project_id)
 
             if not saved_report:
                 raise ValueError("Dataset analysis report failed to persist in store!")
 
-            store.update_project(project_id, {"datasetName": report["filename"]})
+            store.update_project(project_id, {
+                "datasetName": report.get("repoId") or report["filename"],
+                "datasetSource": {
+                    "source": report.get("source"),
+                    "url": report.get("sourceUrl"),
+                    "repoId": report.get("repoId"),
+                    "license": report.get("license"),
+                    "revision": report.get("revision"),
+                    "splits": report.get("declaredSplits"),
+                },
+            })
             store.update_stage_state(project_id, "dataset_eda", "COMPLETED")
-            store.add_agent_log(project_id, "DATASET_AGENT", f"Dataset EDA completed & verified. {report['rowCount']} rows, {report['columnCount']} columns. Target: '{report['targetCandidate']}' ({report['taskType']}).", "COMPLETED")
+            imb_note = ""
+            if report.get("isImbalanced"):
+                imb_note = f" Highly imbalanced: minority class is only {report.get('minorityClassPct')}% of records."
+            store.add_agent_log(project_id, "DATASET_AGENT", f"Dataset analysis complete & verified. {report['rowCount']} rows, {report['columnCount']} columns. Target: '{report['targetCandidate']}' ({report['taskType']}).{imb_note}", "COMPLETED")
             store.add_event(project_id, "dataset.analysis.completed", report)
         except Exception as e:
             store.update_stage_state(project_id, "dataset_eda", "FAILED")
@@ -148,11 +161,11 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
 
         store.update_stage_state(project_id, "baseline_training", "RUNNING")
         store.add_event(project_id, "baseline.started")
-        store.add_agent_log(project_id, "BASELINE_AGENT", "Training baseline models (Logistic Regression, Random Forest, Gradient Boosting, MLP)...")
+        store.add_agent_log(project_id, "BASELINE_AGENT", "Training the first set of models (Logistic Regression, Random Forest, Hist Gradient Boosting, XGBoost)...")
         target_col = report["targetCandidate"]
         task_type = report["taskType"]
 
-        baselines, best_model, X_test, y_test = train_baselines(dataset_path, target_col, task_type)
+        baselines, best_model, X_test, y_test = train_baselines(dataset_path, target_col, task_type, test_path=test_path)
         store.save_baselines(project_id, baselines)
         saved_baselines = store.get_baselines(project_id)
 
@@ -165,11 +178,29 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
             store.add_event(project_id, "research.failed", {"reason": "0 baseline models succeeded"})
             return
 
-        best_b = max(completed_b, key=lambda x: list(x["metrics"].values())[0] if x["metrics"] else 0, default=completed_b[0])
+        # Choose the primary metric deliberately. Under severe class imbalance,
+        # accuracy is meaningless, so rank by PR-AUC; otherwise F1 / R2.
+        if task_type == "regression":
+            primary_metric_key = "r2"
+        elif report.get("isImbalanced"):
+            primary_metric_key = "pr_auc"
+        else:
+            primary_metric_key = "f1"
+
+        def _metric_of(b):
+            m = b.get("metrics") or {}
+            if primary_metric_key in m:
+                return m[primary_metric_key]
+            return next(iter(m.values()), 0.0)
+
+        best_b = max(completed_b, key=_metric_of, default=completed_b[0])
         best_model_name = best_b["name"]
-        primary_metric_key = list(best_b['metrics'].keys())[0] if best_b.get("metrics") else ("F1" if task_type == "classification" else "R2")
-        best_metric_val = list(best_b['metrics'].values())[0] if best_b.get("metrics") else 0.0
-        best_metric_str = f"{primary_metric_key.upper()}: {best_metric_val}"
+        best_metric_val = _metric_of(best_b)
+        best_metric_str = f"{primary_metric_key.upper()}: {round(best_metric_val, 4)}"
+
+        split_strategy = report.get("splitStrategy") or "Stratified 80/20 train/test split (random_state=42)"
+        preprocessing_note = "Median imputation + standard scaling on numeric features; class weighting for imbalance."
+        dataset_version = report.get("revision") or "local"
 
         store.update_project(project_id, {
             "bestModel": best_model_name,
@@ -182,14 +213,25 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
         # 4. Root Experiment Node & Error Diagnostics Stage
         root_node = {
             "id": "node-root",
+            "experimentId": "exp-baseline",
             "parentId": None,
             "title": f"Baseline: {best_model_name}",
-            "hypothesis": f"Establish baseline {task_type} performance on dataset `{report['filename']}` using standard benchmark models.",
+            "hypothesis": f"Establish baseline {task_type} performance on dataset `{report.get('repoId') or report['filename']}` using standard benchmark models.",
             "status": "SUCCESS",
             "metricName": primary_metric_key.upper(),
-            "metricValue": best_metric_val,
-            "hyperparams": f"{best_model_name} default configuration",
+            "metricValue": round(best_metric_val, 4),
+            "allMetrics": best_b.get("metrics", {}),
+            "hyperparams": best_b.get("hyperparams", f"{best_model_name} tuned defaults"),
+            "model": best_model_name,
+            "dataset": report.get("repoId") or report["filename"],
+            "datasetVersion": dataset_version,
+            "preprocessing": preprocessing_note,
+            "features": report.get("featureNames"),
+            "featureCount": report.get("columnCount", 0) - 1,
+            "seed": 42,
+            "splitStrategy": split_strategy,
             "executionTime": best_b["trainingTime"] if best_b else "0s",
+            "conclusion": f"Baseline established. Best initial model '{best_model_name}' reached {best_metric_str}.",
             "children": []
         }
         tree_nodes = [root_node]
@@ -252,7 +294,14 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
             # Sandboxed Execution Stage
             store.update_stage_state(project_id, "sandboxed_execution", "RUNNING")
             store.add_agent_log(project_id, "EXECUTION_MANAGER", f"Running sandboxed execution for Exp #{exp_idx} in isolated environment...")
-            exec_res = execute_sandboxed_experiment(exp_hypothesis["python_script"], dataset_path, timeout_sec=60)
+            exec_env = {
+                "TEST_PATH": test_path or "",
+                "TARGET_COL": target_col,
+                "TASK_TYPE": task_type,
+                "PRIMARY_METRIC": primary_metric_key,
+                "IS_IMBALANCED": "1" if report.get("isImbalanced") else "0",
+            }
+            exec_res = execute_sandboxed_experiment(exp_hypothesis["python_script"], dataset_path, timeout_sec=240, extra_env=exec_env)
 
             # Log to Telemetry Tracker (MLflow / DB / Redis)
             tracker.log_project_telemetry(project_id, f"exp_{exp_idx}", exec_res["metrics"])
@@ -283,21 +332,47 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str):
             if exec_res["exitCode"] != 0:
                 status = "FAILED"
 
+            delta = round(float(exp_metric_val) - float(best_metric_val), 4)
             if status == "IMPROVED":
+                conclusion = (f"Confirmed: improved {exp_metric_name} by {delta} over the previous best "
+                              f"({round(best_metric_val, 4)} -> {round(exp_metric_val, 4)}).")
                 best_metric_val = exp_metric_val
-                best_metric_str = f"{exp_metric_name}: {exp_metric_val}"
+                best_metric_str = f"{exp_metric_name}: {round(exp_metric_val, 4)}"
                 best_model_name = exp_hypothesis["title"]
+            elif status == "FAILED":
+                conclusion = f"Experiment failed to run (exit code {exec_res.get('exitCode')}). See logs for details."
+            else:
+                conclusion = (f"Not confirmed: no improvement over the previous best "
+                              f"({exp_metric_name} {round(exp_metric_val, 4)} vs {round(best_metric_val, 4)}).")
 
             exp_node = {
                 "id": exp_id,
+                "experimentId": f"exp-{exp_idx}",
                 "parentId": parent_node_id,
                 "title": exp_hypothesis["title"],
                 "hypothesis": exp_hypothesis["hypothesis"],
                 "status": status,
                 "metricName": exp_metric_name,
-                "metricValue": exp_metric_val,
+                "metricValue": round(exp_metric_val, 4),
+                "allMetrics": exec_res["metrics"].get("metrics", exec_res["metrics"]),
+                "model": exp_hypothesis.get("model", "Generated experiment model"),
+                "dataset": report.get("repoId") or report["filename"],
+                "datasetVersion": dataset_version,
+                "preprocessing": preprocessing_note,
+                "features": report.get("featureNames"),
+                "featureCount": report.get("columnCount", 0) - 1,
                 "hyperparams": exp_hypothesis["hyperparams"],
+                "seed": 42,
+                "splitStrategy": split_strategy,
                 "executionTime": exec_res["runtime"],
+                "sandboxMode": exec_res.get("sandboxMode"),
+                "artifacts": {
+                    "script": os.path.join(exp_dir, "script.py"),
+                    "stdout": os.path.join(exp_dir, "stdout.log"),
+                    "stderr": os.path.join(exp_dir, "stderr.log"),
+                    "metrics": os.path.join(exp_dir, "metrics.json"),
+                },
+                "conclusion": conclusion,
                 "stdout": exec_res["stdout"],
                 "stderr": exec_res["stderr"],
                 "children": []

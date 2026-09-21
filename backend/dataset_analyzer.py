@@ -1,12 +1,16 @@
 import os
 import csv
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-def analyze_dataset(file_path: str) -> Dict[str, Any]:
+def analyze_dataset(file_path: str, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Performs real statistical analysis on a CSV or Parquet dataset file.
     Supports both pandas/numpy and standard library fallback when pandas is unavailable.
     Does NOT use fake/hardcoded values.
+
+    ``meta`` optionally carries out-of-band provenance (Hugging Face source url,
+    license, revision, declared splits, description) which is merged into the
+    report and enriched with imbalance / leakage diagnostics.
     """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Dataset file not found at {file_path}")
@@ -17,9 +21,66 @@ def analyze_dataset(file_path: str) -> Dict[str, Any]:
     try:
         import pandas as pd
         import numpy as np
-        return _analyze_with_pandas(file_path, file_size_str)
+        report = _analyze_with_pandas(file_path, file_size_str)
     except ImportError:
-        return _analyze_with_stdlib(file_path, file_size_str)
+        report = _analyze_with_stdlib(file_path, file_size_str)
+
+    return _enrich(report, meta)
+
+
+def _enrich(report: Dict[str, Any], meta: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Merge provenance metadata and derive imbalance / leakage diagnostics."""
+    dist = report.get("classDistribution") or []
+    minority_pct = None
+    positive_class = None
+    imbalance_ratio = None
+
+    if report.get("taskType") == "classification" and len(dist) >= 2:
+        ordered = sorted(dist, key=lambda d: d.get("percentage", 0))
+        minority_pct = ordered[0].get("percentage")
+        majority_pct = ordered[-1].get("percentage") or 0
+        # Positive (minority / event) class is what we care about for fraud.
+        positive_class = ordered[0].get("label")
+        if minority_pct:
+            imbalance_ratio = round(majority_pct / minority_pct, 1)
+
+    report["minorityClassPct"] = minority_pct
+    report["positiveClass"] = positive_class
+    report["classImbalanceRatio"] = imbalance_ratio
+    report["isImbalanced"] = bool(minority_pct is not None and minority_pct < 5.0)
+
+    # Possible leakage: identifier-like or target-echoing columns among features.
+    import re as _re
+    leakage_suspects = []
+    feature_names = report.get("featureNames") or []
+    id_tokens = ("id", "index", "transaction_id", "uuid", "row_num", "record_id")
+    target = (report.get("targetCandidate") or "").lower()
+    for fn in feature_names:
+        low = str(fn).lower()
+        if low == target:
+            continue
+        # Standalone identifier tokens only (avoid matching 'kids' -> 'id').
+        parts = _re.split(r"[^a-z0-9]+", low)
+        if any(tok in id_tokens for tok in parts) or low in id_tokens:
+            leakage_suspects.append(fn)
+        elif target and target in parts:
+            leakage_suspects.append(fn)
+    report["possibleLeakage"] = leakage_suspects
+
+    if meta:
+        report["source"] = meta.get("source")
+        report["sourceUrl"] = meta.get("url")
+        report["license"] = meta.get("license")
+        report["revision"] = meta.get("revision")
+        report["repoId"] = meta.get("repoId")
+        report["datasetDescription"] = meta.get("description")
+        report["declaredSplits"] = meta.get("splits")
+        report["splitStrategy"] = meta.get("splitStrategy")
+    else:
+        report.setdefault("source", "local-file")
+        report.setdefault("splitStrategy", "stratified 80/20 train/test split (seed 42)")
+
+    return report
 
 def _analyze_with_pandas(file_path: str, file_size_str: str) -> Dict[str, Any]:
     import pandas as pd
@@ -112,6 +173,8 @@ def _analyze_with_pandas(file_path: str, file_size_str: str) -> Dict[str, Any]:
         "columnCount": col_count,
         "fileSize": file_size_str,
         "targetCandidate": target_col,
+        "featureNames": [c for c in df.columns if c != target_col],
+        "dtypes": {c: str(t) for c, t in df.dtypes.astype(str).items()},
         "taskType": task_type,
         "classDistribution": class_distribution,
         "missingValuesTotal": missing_total,
@@ -260,6 +323,8 @@ def _analyze_with_stdlib(file_path: str, file_size_str: str) -> Dict[str, Any]:
         "columnCount": col_count,
         "fileSize": file_size_str,
         "targetCandidate": target_col,
+        "featureNames": [h for h in headers if h != target_col],
+        "dtypes": None,
         "taskType": task_type,
         "classDistribution": class_distribution,
         "missingValuesTotal": missing_total,

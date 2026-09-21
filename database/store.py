@@ -217,7 +217,8 @@ class ResearchStore:
                 "last_assistant_message": None,
                 "last_topic": None,
                 "pending_action": None,
-                "active_project_id": None
+                "active_project_id": None,
+                "messages": []
             }
             self.save()
         return sessions[sid]
@@ -239,7 +240,42 @@ class ResearchStore:
         })
 
     def clear_pending_action(self, session_id: str):
-        self.update_session(session_id, {"pending_action": None})
+        self.update_session(session_id or "default-session", {"pending_action": None})
+
+    def record_message(self, session_id: str, role: str, content: str,
+                       intent: Optional[str] = None, topic: Optional[str] = None,
+                       research_id: Optional[str] = None,
+                       pending_action: Optional[Dict[str, Any]] = None,
+                       max_history: int = 200):
+        """Append a single conversational message to the session history.
+
+        Section 3: every message is stored separately with its own id, role,
+        content, timestamp, intent, topic, research_id and pending_action so the
+        full conversation can be reconstructed and audited.
+        """
+        import datetime
+        import uuid
+        sid = session_id or "default-session"
+        sess = self.get_session(sid)
+        history = sess.setdefault("messages", [])
+        history.append({
+            "id": str(uuid.uuid4()),
+            "conversation_id": sid,
+            "role": role,
+            "content": content,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "intent": intent,
+            "topic": topic,
+            "research_id": research_id,
+            "pending_action": pending_action,
+        })
+        if len(history) > max_history:
+            del history[:len(history) - max_history]
+        self.save()
+
+    def get_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        sess = self.get_session(session_id or "default-session")
+        return sess.get("messages", [])
 
 store = ResearchStore()
 
