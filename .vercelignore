@@ -6,3 +6,5 @@ uploaded_datasets
 experiments
 database/*.json
 tests
+finetuning
+requirements-finetune.txt
