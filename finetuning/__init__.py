@@ -23,5 +23,7 @@ __all__ = [
     "config",
     "license_gate",
     "dataset_loader",
+    "architecture",
+    "benchmark",
     "trainer",
 ]
