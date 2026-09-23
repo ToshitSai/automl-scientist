@@ -32,14 +32,117 @@ def get_experiments_dir():
 
 EXPERIMENTS_BASE_DIR = get_experiments_dir()
 
+# ---------------------------------------------------------------------------
+# Active-run registry: prevents duplicate concurrent launches of the same
+# project (double-clicked approvals, repeated chat "go ahead", resume racing a
+# start). Claiming is an atomic check-and-set under the lock.
+# ---------------------------------------------------------------------------
+_active_runs = set()
+_active_runs_lock = threading.Lock()
+
+
+def _try_register_run(project_id: str) -> bool:
+    """Atomically claim a project for a pipeline run. False if already active."""
+    with _active_runs_lock:
+        if project_id in _active_runs:
+            return False
+        _active_runs.add(project_id)
+        return True
+
+
+def _unregister_run(project_id: str) -> None:
+    with _active_runs_lock:
+        _active_runs.discard(project_id)
+
+
+def is_run_active(project_id: str) -> bool:
+    with _active_runs_lock:
+        return project_id in _active_runs
+
+
+def _sandbox_stage_state(docker_available: bool, exit_code) -> str:
+    """Honest stage mapping: a non-zero exit code is a FAILED run in ANY
+    sandbox; only a successful run without Docker is NOT_CONFIGURED."""
+    if exit_code != 0:
+        return "FAILED"
+    return "COMPLETED" if docker_available else "NOT_CONFIGURED"
+
+
+def _compute_final_status(stage_states: Dict[str, str], experiment_statuses: List[str]) -> str:
+    """The research is only COMPLETED if the core stages succeeded AND, when
+    experiments were actually attempted, at least one produced a result.
+    Rendering a report over zero valid experiments is not a completed study."""
+    core_succeeded = (
+        stage_states.get("dataset_eda") == "COMPLETED"
+        and stage_states.get("baseline_training") == "COMPLETED"
+        and stage_states.get("research_report") == "COMPLETED"
+    )
+    if not core_succeeded:
+        return "FAILED"
+    if experiment_statuses and all(s == "FAILED" for s in experiment_statuses):
+        return "FAILED"
+    return "COMPLETED"
+
+
+def _refuse_duplicate_launch(project_id: str) -> None:
+    msg = "Duplicate launch refused: a pipeline run for this project is already active."
+    print(f"[ORCHESTRATOR] {msg} (project '{project_id}')")
+    store.add_agent_log(project_id, "RESEARCH_ORCHESTRATOR", msg, "WARNING")
+
+
 def run_research_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
-    """Executes the autonomous ML research pipeline synchronously."""
+    """Executes the autonomous ML research pipeline synchronously.
+    Returns False (and launches nothing) if the project already has an active run."""
+    if not _try_register_run(project_id):
+        _refuse_duplicate_launch(project_id)
+        return False
     _orchestrate_pipeline(project_id, dataset_path, dataset_meta, test_path)
+    return True
+
 
 def run_research_pipeline_async(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
-    """Executes the autonomous ML research pipeline asynchronously in a background thread."""
+    """Executes the autonomous ML research pipeline asynchronously in a background thread.
+    Returns False (and launches nothing) if the project already has an active run."""
+    if not _try_register_run(project_id):
+        _refuse_duplicate_launch(project_id)
+        return False
     thread = threading.Thread(target=_orchestrate_pipeline, args=(project_id, dataset_path, dataset_meta, test_path), daemon=True)
     thread.start()
+    return True
+
+
+def resume_pipeline(project_id: str) -> Dict[str, Any]:
+    """Resume a project: unpause a live run, or relaunch the pipeline when the
+    previous run died (e.g. server restart). Returns a small result dict so
+    callers (API, chat) can report what actually happened."""
+    proj = store.get_project(project_id)
+    if not proj:
+        return {"resumed": False, "relaunched": False, "reason": "not_found"}
+
+    if is_run_active(project_id):
+        # A pipeline thread is alive (possibly paused): just release it.
+        store.set_control_signal(project_id, "RUN")
+        return {"resumed": True, "relaunched": False, "reason": "run_active"}
+
+    dataset_path = proj.get("datasetPath")
+    if not dataset_path or not os.path.exists(dataset_path):
+        store.add_agent_log(
+            project_id, "RESEARCH_ORCHESTRATOR",
+            "Cannot resume: the dataset file for this project is no longer available on disk. Start a new research project instead.",
+            "FAILED",
+        )
+        return {"resumed": False, "relaunched": False, "reason": "dataset_missing"}
+
+    store.set_control_signal(project_id, "RUN")
+    store.update_project(project_id, {"status": "IN_PROGRESS", "errorDetail": None})
+    store.add_agent_log(
+        project_id, "RESEARCH_ORCHESTRATOR",
+        "Resuming research: relaunching the pipeline from the beginning (mid-flight state is not recoverable after an interruption).",
+        "IN_PROGRESS",
+    )
+    store.add_event(project_id, "research.resumed", {"datasetPath": dataset_path})
+    run_research_pipeline_async(project_id, dataset_path, proj.get("datasetMeta"), proj.get("testPath"))
+    return {"resumed": True, "relaunched": True, "reason": "relaunched"}
 
 def _check_control_signal(project_id: str) -> str:
     proj = store.get_project(project_id)
@@ -57,6 +160,15 @@ def _check_control_signal(project_id: str) -> str:
     return signal
 
 def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
+    """Runs the pipeline and ALWAYS releases the active-run registry, even when
+    the run crashes, so the project can never stay wedged as 'active'."""
+    try:
+        _run_pipeline_stages(project_id, dataset_path, dataset_meta, test_path)
+    finally:
+        _unregister_run(project_id)
+
+
+def _run_pipeline_stages(project_id: str, dataset_path: str, dataset_meta: Dict[str, Any] = None, test_path: str = None):
     proj = store.get_project(project_id)
     if not proj:
         return
@@ -254,6 +366,7 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict
         executed_count = 0
         parent_node_id = "node-root"
         latest_error_diag = error_analysis or {}
+        experiment_statuses: List[str] = []
 
         while executed_count < max_exps:
             if _check_control_signal(project_id) == "STOP":
@@ -313,24 +426,31 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict
             with open(os.path.join(exp_dir, "metrics.json"), "w", encoding="utf-8") as f:
                 json.dump(exec_res["metrics"], f, indent=2)
 
-            # Check sandbox stage completion rules
-            if exec_res.get("dockerAvailable") and exec_res.get("exitCode") == 0:
-                store.update_stage_state(project_id, "sandboxed_execution", "COMPLETED")
+            # Check sandbox stage completion rules — honest mapping: a non-zero
+            # exit code is a FAILED run in ANY sandbox; only a successful run
+            # without Docker is NOT_CONFIGURED (previously a failed process-
+            # sandbox run was laundered into NOT_CONFIGURED).
+            stage_state = _sandbox_stage_state(bool(exec_res.get("dockerAvailable")), exec_res.get("exitCode"))
+            if stage_state == "COMPLETED":
                 store.add_agent_log(project_id, "EXECUTION_MANAGER", "Docker container execution completed successfully (Exit code 0).", "COMPLETED")
-            elif not exec_res.get("dockerAvailable"):
-                # Docker missing -> state MUST NOT be COMPLETED
-                store.update_stage_state(project_id, "sandboxed_execution", "NOT_CONFIGURED")
+            elif stage_state == "NOT_CONFIGURED":
                 store.add_agent_log(project_id, "EXECUTION_MANAGER", "Docker sandbox unavailable on host system. Executed in isolated Process Sandbox. Stage state: NOT CONFIGURED.", "WARNING")
             else:
-                store.update_stage_state(project_id, "sandboxed_execution", "FAILED")
                 store.add_agent_log(project_id, "EXECUTION_MANAGER", f"Sandboxed execution failed with exit code {exec_res.get('exitCode')}.", "FAILED")
+            store.update_stage_state(project_id, "sandboxed_execution", stage_state)
 
-            exp_metric_val = exec_res["metrics"].get("metric_value", best_metric_val)
-            exp_metric_name = exec_res["metrics"].get("metric_name", primary_metric_key.upper())
+            exp_metrics = exec_res.get("metrics") or {}
+            exp_metric_val = exp_metrics.get("metric_value")
+            if exp_metric_val is None:
+                # A failed run produced no real metric: record 0 instead of
+                # laundering the baseline value into a failed experiment.
+                exp_metric_val = 0.0 if exec_res["exitCode"] != 0 else best_metric_val
+            exp_metric_name = exp_metrics.get("metric_name", primary_metric_key.upper())
 
             status = "IMPROVED" if exp_metric_val > best_metric_val else "PLATEAUED"
             if exec_res["exitCode"] != 0:
                 status = "FAILED"
+            experiment_statuses.append(status)
 
             delta = round(float(exp_metric_val) - float(best_metric_val), 4)
             if status == "IMPROVED":
@@ -390,10 +510,15 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict
 
             store.save_tree_nodes(project_id, tree_nodes)
 
-            # Error Diagnostics on Experiment
+            # Error Diagnostics on Experiment. Resilient: a diagnostics failure
+            # must not kill the pipeline after the experiment already ran — keep
+            # the previous diagnostics and continue.
             store.add_agent_log(project_id, "ERROR_ANALYSIS_AGENT", f"Running error diagnostics on Experiment #{exp_idx} predictions...")
-            latest_error_diag = perform_error_analysis(best_model, X_test, y_test, list(X_test.columns) if hasattr(X_test, "columns") else None)
-            store.save_error_analysis(project_id, latest_error_diag)
+            try:
+                latest_error_diag = perform_error_analysis(best_model, X_test, y_test, list(X_test.columns) if hasattr(X_test, "columns") else None)
+                store.save_error_analysis(project_id, latest_error_diag)
+            except Exception as diag_err:
+                store.add_agent_log(project_id, "ERROR_ANALYSIS_AGENT", f"Error diagnostics failed for Exp #{exp_idx}: {diag_err}. Keeping previous diagnostics.", "WARNING")
 
             elapsed_mins = round((time.time() - start_wall_time) / 60.0, 2)
             store.update_project(project_id, {
@@ -426,19 +551,17 @@ def _orchestrate_pipeline(project_id: str, dataset_path: str, dataset_meta: Dict
         elapsed_mins = round((time.time() - start_wall_time) / 60.0, 2)
         proj_stages = store.get_project(project_id).get("stageStates", {})
 
-        core_succeeded = (
-            proj_stages.get("dataset_eda") == "COMPLETED" and
-            proj_stages.get("baseline_training") == "COMPLETED" and
-            proj_stages.get("research_report") == "COMPLETED"
-        )
-
-        final_status = "COMPLETED" if core_succeeded else "FAILED"
+        final_status = _compute_final_status(proj_stages, experiment_statuses)
+        all_experiments_failed = bool(experiment_statuses) and all(s == "FAILED" for s in experiment_statuses)
 
         store.add_agent_log(project_id, "RESEARCH_ORCHESTRATOR", f"Autonomous research pipeline finished with status: {final_status}.", final_status)
         store.update_project(project_id, {
             "status": final_status,
-            "activeAgent": "FINISHED" if core_succeeded else "ERROR",
-            "computeUsed": f"{elapsed_mins} mins / {budget_mins} mins"
+            "activeAgent": "FINISHED" if final_status == "COMPLETED" else "ERROR",
+            "computeUsed": f"{elapsed_mins} mins / {budget_mins} mins",
+            # Honest bookkeeping: when every attempted experiment failed, the
+            # run is FAILED even though the report itself rendered fine.
+            "errorDetail": "All attempted experiments failed; no validated improvement was produced." if all_experiments_failed else None,
         })
         store.add_event(project_id, f"research.{final_status.lower()}")
 

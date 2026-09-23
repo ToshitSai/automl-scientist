@@ -26,6 +26,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+def reconcile_interrupted_runs():
+    """Startup reconciliation: pipeline runs live in background threads of the
+    previous process, so after a restart any project still marked
+    QUEUED / IN_PROGRESS / RUNNING is a ghost run. Mark those FAILED (with an
+    explicit log + event) so they can be honestly resumed or discarded."""
+    try:
+        reconciled = store.reconcile_stale_runs()
+        if reconciled:
+            print(f"[STARTUP RECONCILIATION] Marked interrupted run(s) as FAILED: {', '.join(reconciled)}")
+    except Exception as exc:
+        print(f"[STARTUP RECONCILIATION WARNING]: {exc}")
+
 def get_datasets_dir():
     local_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploaded_datasets")
     try:
@@ -205,6 +219,11 @@ async def chat_endpoint(payload: dict):
                     ),
                 })
             else:
+                # A bare discovery URL (https://huggingface.co/datasets) means
+                # "find me datasets" — search with a generic ML goal instead of
+                # the literal URL text.
+                if hf_ref.get("kind") == "general":
+                    research_goal = "machine learning"
                 lead = f"I'll look for datasets that could help {research_goal.lower()}.\n\n"
                 cands = hf.search_datasets(research_goal, limit=6)
                 comp = hf.compare_and_recommend(cands, research_goal, top_n=4)
@@ -315,6 +334,11 @@ def _approve_dataset(repo_id: str, research_goal: str, budget: int = 60, max_exp
         budget=budget,
         provider="Heuristic / Rule-based",
         max_experiments=max_experiments,
+        # Persist the launch context so the run can be resumed (relaunched)
+        # after a server restart without re-downloading the dataset.
+        dataset_path=dl["primaryPath"],
+        test_path=dl.get("testPath"),
+        dataset_meta=meta,
     )
 
     try:
@@ -433,7 +457,10 @@ async def start_research(
             dataset_name=dataset_name,
             budget=budget,
             provider=llm_provider,
-            max_experiments=max_experiments
+            max_experiments=max_experiments,
+            dataset_path=dataset_path,
+            test_path=None,
+            dataset_meta=None,
         )
 
         try:
@@ -470,7 +497,16 @@ def get_project(project_id: str):
 
 @app.post("/api/projects/{project_id}/control")
 def set_control_signal(project_id: str, payload: dict):
+    if not store.get_project(project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
     signal = payload.get("signal", "RUN") # "STOP", "PAUSE", "RUN"
+    if signal == "RUN" and store.get_project(project_id):
+        # Resuming a run whose pipeline thread is gone (server restart, crash)
+        # relaunches the pipeline from the stored dataset path; a live (paused)
+        # run is just unpaused.
+        from agents.orchestrator import resume_pipeline
+        resume = resume_pipeline(project_id)
+        return {"status": "ok", "resume": resume, "project": store.get_project(project_id)}
     store.set_control_signal(project_id, signal)
     return {"status": "ok", "project": store.get_project(project_id)}
 

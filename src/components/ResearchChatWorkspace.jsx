@@ -18,7 +18,8 @@ export default function ResearchChatWorkspace({
   chatMessages,
   setChatMessages,
   onApproveDataset,
-  isApproving
+  isApproving,
+  conversationId: propsConversationId
 }) {
   const [activeTab, setActiveTab] = useState('research'); // 'research' | 'report'
   const [datasetReport, setDatasetReport] = useState(null);
@@ -32,7 +33,10 @@ export default function ResearchChatWorkspace({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [lastTopic, setLastTopic] = useState(null);
-  const [conversationId] = useState(() => 'conv-' + Math.random().toString(36).substring(2, 9));
+  const [localConversationId] = useState(() => 'conv-' + Math.random().toString(36).substring(2, 9));
+  // Prefer the app-level conversation (shared with the first message) so the
+  // whole chat shares one server-side memory.
+  const conversationId = propsConversationId || localConversationId;
   const chatBottomRef = useRef(null);
 
   const projectId = activeProject?.id;
@@ -145,6 +149,24 @@ export default function ResearchChatWorkspace({
   const bm = bestBaseline?.metrics || {};
   const pct = (v) => (typeof v === 'number' ? `${(v * 100).toFixed(1)}%` : '—');
   const isFraudTask = bestBaseline && (bm.pr_auc != null || bm.recall != null);
+
+  // Honest completion summary built ONLY from real stored results: compare the
+  // best follow-up experiment against the baseline instead of claiming a win.
+  const expNodes = treeNodes.filter(n => n.parentId !== null && n.metricValue != null);
+  const metricName = (treeNodes[0] && treeNodes[0].metricName) || (expNodes[0] && expNodes[0].metricName) || 'metric';
+  let completionSummary = "I've prepared the research report for you.";
+  if (expNodes.length > 0) {
+    const bestExp = expNodes.reduce((a, b) => ((b.metricValue ?? 0) > (a.metricValue ?? 0) ? b : a));
+    const baseVal = (treeNodes.find(n => n.parentId === null) || {}).metricValue;
+    const fmt = (v) => (typeof v === 'number' ? v.toFixed(4) : v);
+    if (typeof baseVal === 'number' && bestExp.metricValue > baseVal) {
+      completionSummary = `The best approach (${bestExp.title}) reached ${metricName} ${fmt(bestExp.metricValue)}, improving on the baseline's ${fmt(baseVal)}.`;
+    } else if (typeof baseVal === 'number') {
+      completionSummary = `None of the ${expNodes.length} additional approach${expNodes.length > 1 ? 'es' : ''} beat the baseline (${metricName} ${fmt(baseVal)}), so the baseline stands as the strongest model.`;
+    } else {
+      completionSummary = `The best approach reached ${metricName} ${fmt(bestExp.metricValue)}.`;
+    }
+  }
 
   const progressItems = [
     { key: 'literature_search', label: 'Looking at existing research', state: stageStates.literature_search },
@@ -455,7 +477,7 @@ export default function ResearchChatWorkspace({
                 {isCompleted && (
                   <div className="bg-[#0D1520] border border-cyan-500/30 rounded-xl p-4 space-y-3">
                     <p className="text-xs text-slate-200 leading-relaxed">
-                      Research complete. I tested several approaches and found that the strongest approach performed better than the initial benchmark model. The main reason was that it detected more unusual transaction patterns. I've prepared the complete research report for you.
+                      Research complete. {completionSummary} I've prepared the complete research report for you.
                     </p>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <button

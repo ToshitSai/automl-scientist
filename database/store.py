@@ -23,7 +23,9 @@ STORE_FILE = get_default_store_path()
 class ResearchStore:
     def __init__(self, filepath: str = STORE_FILE):
         self.filepath = filepath
-        self.lock = threading.Lock()
+        # RLock: public mutators hold the lock while mutating AND saving; save()
+        # re-acquires it (reentrant) instead of deadlocking.
+        self.lock = threading.RLock()
         self._load()
 
     def _load(self):
@@ -59,11 +61,27 @@ class ResearchStore:
         }
 
     def save(self):
+        """Persist atomically: write to a temp file, then os.replace().
+
+        The old in-place open(path, 'w') truncated the store before writing; a
+        crash mid-write left a corrupted file that _load() then silently
+        replaced with an empty default state (total data loss).
+        """
         with self.lock:
             try:
-                os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
-                with open(self.filepath, "w", encoding="utf-8") as f:
-                    json.dump(self.data, f, indent=2)
+                dir_name = os.path.dirname(self.filepath) or "."
+                os.makedirs(dir_name, exist_ok=True)
+                fd, tmp_path = tempfile.mkstemp(prefix=".research_store_", suffix=".tmp", dir=dir_name)
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(self.data, f, indent=2)
+                    os.replace(tmp_path, self.filepath)
+                except BaseException:
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                    raise
             except Exception as e:
                 print(f"[STORE SAVE WARNING]: {e}")
 
@@ -74,7 +92,9 @@ class ResearchStore:
         self.data.setdefault("settings", {}).update(settings)
         self.save()
 
-    def create_project(self, project_id: str, name: str, objective: str, dataset_name: str, budget: int, provider: str, max_experiments: int = 5) -> Dict[str, Any]:
+    def create_project(self, project_id: str, name: str, objective: str, dataset_name: str, budget: int, provider: str,
+                       max_experiments: int = 5, dataset_path: Optional[str] = None, test_path: Optional[str] = None,
+                       dataset_meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         import datetime
         project = {
             "id": project_id,
@@ -82,6 +102,11 @@ class ResearchStore:
             "objective": objective,
             "researchQuestion": None,
             "datasetName": dataset_name or "Not selected",
+            # Persisted launch context so an interrupted run can be relaunched
+            # (resume) after a server restart without re-uploading the dataset.
+            "datasetPath": dataset_path,
+            "testPath": test_path,
+            "datasetMeta": dataset_meta,
             "status": "QUEUED",
             "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "experimentsCount": 0,
@@ -107,8 +132,9 @@ class ResearchStore:
                 "research_report": "NOT_STARTED"
             }
         }
-        self.data["projects"][project_id] = project
-        self.save()
+        with self.lock:
+            self.data["projects"][project_id] = project
+            self.save()
         return project
 
     def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
@@ -118,116 +144,162 @@ class ResearchStore:
         return list(self.data["projects"].values())
 
     def update_project(self, project_id: str, updates: Dict[str, Any]):
-        if project_id in self.data["projects"]:
-            self.data["projects"][project_id].update(updates)
-            self.save()
+        with self.lock:
+            if project_id in self.data["projects"]:
+                self.data["projects"][project_id].update(updates)
+                self.save()
 
     def update_stage_state(self, project_id: str, stage: str, state: str):
         """Updates a specific stage state in the run state machine (NOT_STARTED, RUNNING, COMPLETED, FAILED, NOT_CONFIGURED)."""
-        if project_id in self.data["projects"]:
-            proj = self.data["projects"][project_id]
-            proj.setdefault("stageStates", {})[stage] = state
-            self.save()
+        with self.lock:
+            if project_id in self.data["projects"]:
+                proj = self.data["projects"][project_id]
+                proj.setdefault("stageStates", {})[stage] = state
+                self.save()
 
     def add_event(self, project_id: str, event_type: str, details: Optional[Dict[str, Any]] = None):
         """Emits a structured backend event."""
         import datetime
-        if project_id in self.data["projects"]:
-            evt = {
-                "type": event_type,
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "details": details or {}
-            }
-            self.data["projects"][project_id].setdefault("events", []).append(evt)
-            self.save()
+        with self.lock:
+            if project_id in self.data["projects"]:
+                evt = {
+                    "type": event_type,
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "details": details or {}
+                }
+                self.data["projects"][project_id].setdefault("events", []).append(evt)
+                self.save()
 
     def set_control_signal(self, project_id: str, signal: str):
-        if project_id in self.data["projects"]:
-            self.data["projects"][project_id]["controlSignal"] = signal
-            if signal == "STOP":
-                self.data["projects"][project_id]["status"] = "STOPPED"
-            elif signal == "PAUSE":
-                self.data["projects"][project_id]["status"] = "PAUSED"
-            elif signal == "RUN" and self.data["projects"][project_id]["status"] in ["PAUSED", "STOPPED"]:
-                self.data["projects"][project_id]["status"] = "IN_PROGRESS"
-            self.save()
+        with self.lock:
+            if project_id in self.data["projects"]:
+                self.data["projects"][project_id]["controlSignal"] = signal
+                if signal == "STOP":
+                    self.data["projects"][project_id]["status"] = "STOPPED"
+                elif signal == "PAUSE":
+                    self.data["projects"][project_id]["status"] = "PAUSED"
+                elif signal == "RUN" and self.data["projects"][project_id]["status"] in ["PAUSED", "STOPPED"]:
+                    self.data["projects"][project_id]["status"] = "IN_PROGRESS"
+                self.save()
 
     def add_agent_log(self, project_id: str, agent_name: str, message: str, status: str = "IN_PROGRESS"):
         import datetime
-        if project_id in self.data["projects"]:
-            proj = self.data["projects"][project_id]
-            proj["activeAgent"] = agent_name
-            proj.setdefault("agentLogs", []).append({
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "agent": agent_name,
-                "message": message,
-                "status": status
-            })
-            self.save()
+        with self.lock:
+            if project_id in self.data["projects"]:
+                proj = self.data["projects"][project_id]
+                proj["activeAgent"] = agent_name
+                proj.setdefault("agentLogs", []).append({
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "agent": agent_name,
+                    "message": message,
+                    "status": status
+                })
+                self.save()
 
     def save_dataset_report(self, project_id: str, report: Dict[str, Any]):
-        self.data["datasets"][project_id] = report
-        self.save()
+        with self.lock:
+            self.data["datasets"][project_id] = report
+            self.save()
 
     def get_dataset_report(self, project_id: str) -> Optional[Dict[str, Any]]:
         return self.data["datasets"].get(project_id)
 
     def save_baselines(self, project_id: str, baselines: List[Dict[str, Any]]):
-        self.data["baselines"][project_id] = baselines
-        self.save()
+        with self.lock:
+            self.data["baselines"][project_id] = baselines
+            self.save()
 
     def get_baselines(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["baselines"].get(project_id, [])
 
     def save_tree_nodes(self, project_id: str, nodes: List[Dict[str, Any]]):
-        self.data["tree_nodes"][project_id] = nodes
-        self.save()
+        with self.lock:
+            self.data["tree_nodes"][project_id] = nodes
+            self.save()
 
     def get_tree_nodes(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["tree_nodes"].get(project_id, [])
 
     def save_error_analysis(self, project_id: str, analysis: Dict[str, Any]):
-        self.data["error_analyses"][project_id] = analysis
-        self.save()
+        with self.lock:
+            self.data["error_analyses"][project_id] = analysis
+            self.save()
 
     def get_error_analysis(self, project_id: str) -> Optional[Dict[str, Any]]:
         return self.data["error_analyses"].get(project_id)
 
     def save_literature(self, project_id: str, papers: List[Dict[str, Any]]):
-        self.data["literature"][project_id] = papers
-        self.save()
+        with self.lock:
+            self.data["literature"][project_id] = papers
+            self.save()
 
     def get_literature(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["literature"].get(project_id, [])
 
     def save_report(self, project_id: str, report_md: str):
-        self.data["reports"][project_id] = report_md
-        self.save()
+        with self.lock:
+            self.data["reports"][project_id] = report_md
+            self.save()
+
+    def reconcile_stale_runs(self) -> List[str]:
+        """Mark runs stuck in a non-terminal state as FAILED (startup reconciliation).
+
+        Pipeline runs live in background threads of a single process. After a
+        server restart no thread exists anymore, so any project still marked
+        QUEUED / IN_PROGRESS / RUNNING is a ghost run: it can never progress and
+        would block resume / duplicate-launch logic. Projects the user paused
+        explicitly (PAUSED) are left untouched so their intent survives.
+        """
+        import datetime
+        reconciled: List[str] = []
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        with self.lock:
+            for pid, proj in self.data.get("projects", {}).items():
+                if proj.get("status") in ("QUEUED", "IN_PROGRESS", "RUNNING"):
+                    proj["status"] = "FAILED"
+                    proj["errorDetail"] = "Research interrupted: the server restarted while the pipeline was running."
+                    proj.setdefault("agentLogs", []).append({
+                        "timestamp": now,
+                        "agent": "RESEARCH_ORCHESTRATOR",
+                        "message": "Server restart detected: the interrupted run was marked FAILED. Resume to relaunch the research pipeline.",
+                        "status": "FAILED",
+                    })
+                    proj.setdefault("events", []).append({
+                        "type": "research.interrupted",
+                        "timestamp": now,
+                        "details": {},
+                    })
+                    reconciled.append(pid)
+            if reconciled:
+                self.save()
+        return reconciled
 
     def get_report(self, project_id: str) -> Optional[str]:
         return self.data["reports"].get(project_id)
 
     def get_session(self, session_id: str) -> Dict[str, Any]:
         sid = session_id or "default-session"
-        sessions = self.data.setdefault("sessions", {})
-        if sid not in sessions:
-            sessions[sid] = {
-                "session_id": sid,
-                "last_user_message": None,
-                "last_assistant_message": None,
-                "last_topic": None,
-                "pending_action": None,
-                "active_project_id": None,
-                "messages": []
-            }
-            self.save()
-        return sessions[sid]
+        with self.lock:
+            sessions = self.data.setdefault("sessions", {})
+            if sid not in sessions:
+                sessions[sid] = {
+                    "session_id": sid,
+                    "last_user_message": None,
+                    "last_assistant_message": None,
+                    "last_topic": None,
+                    "pending_action": None,
+                    "active_project_id": None,
+                    "messages": []
+                }
+                self.save()
+            return sessions[sid]
 
     def update_session(self, session_id: str, updates: Dict[str, Any]):
         sid = session_id or "default-session"
-        sess = self.get_session(sid)
-        sess.update(updates)
-        self.save()
+        with self.lock:
+            sess = self.get_session(sid)
+            sess.update(updates)
+            self.save()
 
     def set_pending_action(self, session_id: str, action_type: str, topic: Optional[str] = None, query: Optional[str] = None, project_id: Optional[str] = None):
         self.update_session(session_id, {
@@ -256,22 +328,23 @@ class ResearchStore:
         import datetime
         import uuid
         sid = session_id or "default-session"
-        sess = self.get_session(sid)
-        history = sess.setdefault("messages", [])
-        history.append({
-            "id": str(uuid.uuid4()),
-            "conversation_id": sid,
-            "role": role,
-            "content": content,
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "intent": intent,
-            "topic": topic,
-            "research_id": research_id,
-            "pending_action": pending_action,
-        })
-        if len(history) > max_history:
-            del history[:len(history) - max_history]
-        self.save()
+        with self.lock:
+            sess = self.get_session(sid)
+            history = sess.setdefault("messages", [])
+            history.append({
+                "id": str(uuid.uuid4()),
+                "conversation_id": sid,
+                "role": role,
+                "content": content,
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "intent": intent,
+                "topic": topic,
+                "research_id": research_id,
+                "pending_action": pending_action,
+            })
+            if len(history) > max_history:
+                del history[:len(history) - max_history]
+            self.save()
 
     def get_messages(self, session_id: str) -> List[Dict[str, Any]]:
         sess = self.get_session(session_id or "default-session")

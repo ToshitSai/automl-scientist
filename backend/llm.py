@@ -1,11 +1,44 @@
 import os
 import json
+import math
+import time
+import threading
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Dict, Any, Optional, List
 import backend.config  # Auto-loads .env into os.environ
 
-def call_openai_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+# Per-provider socket timeout. Was 30s x4 sequential (worst case ~2 minutes per
+# query_llm call, which starved the Vercel serverless response window); now 8s
+# and all providers race in parallel, so one call costs at most ~8s wall time.
+_DEFAULT_TIMEOUT = 8
+
+# Hard per-request LLM budget. handle_intent_message() sets a deadline; every
+# query_llm() call caps its wait to the remaining budget and skips entirely
+# once it is exhausted. Threads in one serverless request share one thread.
+_REQUEST_STATE = threading.local()
+
+
+def set_llm_budget(seconds: float) -> None:
+    """Start a hard overall budget for LLM calls on this thread (in seconds)."""
+    _REQUEST_STATE.deadline = time.monotonic() + seconds
+
+
+def clear_llm_budget() -> None:
+    _REQUEST_STATE.deadline = None
+
+
+def remaining_llm_budget() -> Optional[float]:
+    """Seconds left in the current request's LLM budget, or None if unset."""
+    deadline = getattr(_REQUEST_STATE, "deadline", None)
+    if deadline is None:
+        return None
+    return deadline - time.monotonic()
+
+
+def call_openai_api(prompt: str, system_prompt: Optional[str] = None, timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     api_key = os.environ.get("OPENAI_API_KEY")
     api_base = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
@@ -13,6 +46,7 @@ def call_openai_api(prompt: str, system_prompt: Optional[str] = None) -> Optiona
     if not api_key:
         return None
 
+    start = time.monotonic()
     try:
         url = f"{api_base}/chat/completions"
         headers = {
@@ -32,20 +66,24 @@ def call_openai_api(prompt: str, system_prompt: Optional[str] = None) -> Optiona
         }
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["choices"][0]["message"]["content"]
+            content = res_data["choices"][0]["message"]["content"]
+            print(f"[LLM TIMING] OpenAI responded in {time.monotonic() - start:.2f}s")
+            return content
     except Exception as e:
-        print(f"[LLM Client Warning] OpenAI call failed: {e}")
+        print(f"[LLM Client Warning] OpenAI call failed after {time.monotonic() - start:.2f}s: {e}")
         return None
 
-def call_gemini_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+def call_gemini_api(prompt: str, system_prompt: Optional[str] = None, timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return None
 
+    start = time.monotonic()
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         headers = {"Content-Type": "application/json"}
         
         full_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
@@ -56,18 +94,21 @@ def call_gemini_api(prompt: str, system_prompt: Optional[str] = None) -> Optiona
         }
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["candidates"][0]["content"]["parts"][0]["text"]
+            text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            print(f"[LLM TIMING] Gemini responded in {time.monotonic() - start:.2f}s")
+            return text
     except Exception as e:
-        print(f"[LLM Client Warning] Gemini call failed: {e}")
+        print(f"[LLM Client Warning] Gemini call failed after {time.monotonic() - start:.2f}s: {e}")
         return None
 
-def call_anthropic_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+def call_anthropic_api(prompt: str, system_prompt: Optional[str] = None, timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return None
 
+    start = time.monotonic()
     try:
         url = "https://api.anthropic.com/v1/messages"
         headers = {
@@ -85,18 +126,21 @@ def call_anthropic_api(prompt: str, system_prompt: Optional[str] = None) -> Opti
             payload["system"] = system_prompt
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["content"][0]["text"]
+            text = res_data["content"][0]["text"]
+            print(f"[LLM TIMING] Anthropic responded in {time.monotonic() - start:.2f}s")
+            return text
     except Exception as e:
-        print(f"[LLM Client Warning] Anthropic call failed: {e}")
+        print(f"[LLM Client Warning] Anthropic call failed after {time.monotonic() - start:.2f}s: {e}")
         return None
 
-def call_mistral_api(prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+def call_mistral_api(prompt: str, system_prompt: Optional[str] = None, timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     api_key = os.environ.get("MISTRAL_API_KEY")
     if not api_key:
         return None
 
+    start = time.monotonic()
     try:
         url = "https://api.mistral.ai/v1/chat/completions"
         headers = {
@@ -110,41 +154,76 @@ def call_mistral_api(prompt: str, system_prompt: Optional[str] = None) -> Option
         messages.append({"role": "user", "content": prompt})
 
         payload = {
-            "model": "mistral-tiny",
+            # Model is env-configurable so a stronger tier can be enabled without a
+            # code change. Default stays mistral-tiny: the account's current tier
+            # rate-limits (429) small/medium and forbids (403) large, so defaulting
+            # to those would silently degrade every request to the fallback path.
+            "model": os.environ.get("MISTRAL_MODEL", "mistral-tiny"),
+            "max_tokens": int(os.environ.get("MISTRAL_MAX_TOKENS", "700")),
+            # Pinned low for deterministic, reproducible answers (was provider
+            # default ~0.7, which made identical questions give different results).
+            "temperature": float(os.environ.get("MISTRAL_TEMPERATURE", "0.1")),
             "messages": messages
         }
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["choices"][0]["message"]["content"]
+            content = res_data["choices"][0]["message"]["content"]
+            print(f"[LLM TIMING] Mistral responded in {time.monotonic() - start:.2f}s")
+            return content
     except Exception as e:
-        print(f"[LLM Client Warning] Mistral call failed: {e}")
+        print(f"[LLM Client Warning] Mistral call failed after {time.monotonic() - start:.2f}s: {e}")
         return None
 
-def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = "auto", role: str = "main") -> Optional[str]:
+def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = "auto", role: str = "main", timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     """
     Unified multi-provider LLM caller supporting OpenAI, Gemini, Anthropic Claude, and Mistral.
-    Supports role-based routing (main research LLM vs critic LLM).
+
+    All providers are raced IN PARALLEL via a thread pool; the first successful
+    (non-None) result is returned immediately. The classic role preference
+    (main: OpenAI -> Gemini -> Anthropic -> Mistral; critic: Anthropic -> Gemini
+    -> OpenAI -> Mistral) only acts as a tie-break: if several succeed at the
+    same time the first to complete wins. The wait is capped by the `timeout`
+    parameter (default ~8s) and further by the request's overall LLM budget
+    (set_llm_budget) when one is active.
     """
     if role == "critic":
-        # Critic preference: Anthropic Claude -> Gemini -> OpenAI -> Mistral
-        res = call_anthropic_api(prompt, system_prompt)
-        if res: return res
-        res = call_gemini_api(prompt, system_prompt)
-        if res: return res
-        res = call_openai_api(prompt, system_prompt)
-        if res: return res
-        return call_mistral_api(prompt, system_prompt)
+        providers = (call_anthropic_api, call_gemini_api, call_openai_api, call_mistral_api)
     else:
-        # Main Research preference: OpenAI -> Gemini -> Anthropic -> Mistral
-        res = call_openai_api(prompt, system_prompt)
-        if res: return res
-        res = call_gemini_api(prompt, system_prompt)
-        if res: return res
-        res = call_anthropic_api(prompt, system_prompt)
-        if res: return res
-        return call_mistral_api(prompt, system_prompt)
+        providers = (call_openai_api, call_gemini_api, call_anthropic_api, call_mistral_api)
+
+    remaining = remaining_llm_budget()
+    if remaining is not None and remaining <= 0:
+        print("[LLM BUDGET] exhausted before call; skipping provider race")
+        return None
+    # Cap the socket timeout to the requested timeout and the remaining budget.
+    # The OVERALL wait is capped too: socket timeouts are per-read, so a slow
+    # streaming response could otherwise exceed the wall-time budget.
+    socket_timeout = timeout if remaining is None else max(1, min(timeout, math.ceil(remaining)))
+    wait_overall = timeout if remaining is None else max(0.05, remaining)
+    start = time.monotonic()
+
+    executor = ThreadPoolExecutor(max_workers=len(providers))
+    try:
+        futures = {
+            executor.submit(fn, prompt, system_prompt, socket_timeout): fn.__name__
+            for fn in providers
+        }
+        try:
+            for fut in as_completed(futures, timeout=wait_overall):
+                result = fut.result()
+                if result:
+                    print(f"[LLM TIMING] first success via {futures[fut]} in {time.monotonic() - start:.2f}s")
+                    return result
+        except FuturesTimeoutError:
+            print(f"[LLM TIMING] provider race timed out after {time.monotonic() - start:.2f}s")
+        return None
+    finally:
+        # Do NOT wait for stragglers: returning immediately on the first result
+        # is the whole point. cancel_futures drops queued ones; running sockets
+        # finish (or hit their timeout) in the background.
+        executor.shutdown(wait=False, cancel_futures=True)
 
 def query_critic_llm(hypothesis_title: str, hypothesis_body: str, baseline_metric: str) -> Dict[str, Any]:
     """

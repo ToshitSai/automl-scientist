@@ -8,3 +8,6 @@ database/*.json
 tests
 finetuning
 requirements-finetune.txt
+.env
+.env.local
+.env.*.local

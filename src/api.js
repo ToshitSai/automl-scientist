@@ -49,6 +49,14 @@ export async function updateSettings(settings) {
   });
 }
 
+export async function fetchConversationMessages(conversationId) {
+  try {
+    return await safeFetchJson(`${API_BASE}/conversations/${conversationId}/messages`);
+  } catch (err) {
+    return [];
+  }
+}
+
 export async function fetchProjects() {
   try {
     return await safeFetchJson(`${API_BASE}/projects`);

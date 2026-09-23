@@ -1,8 +1,11 @@
 import os
+import ast
 import json
+import operator
 import re
-from typing import Dict, Any, Optional, List
-from backend.llm import query_llm
+from typing import Dict, Any, Optional, List, Tuple
+from backend.llm import query_llm, set_llm_budget, clear_llm_budget
+from backend.calculator import try_evaluate
 from database.store import store
 import backend.config
 
@@ -12,6 +15,12 @@ INTENT_CATEGORIES = [
     "RESEARCH_CONTROL",
     "EXPLANATION",
     "CODING",
+    "CODE_ANALYSIS",
+    "CALCULATION",
+    "MATHEMATICS",
+    "WEB_SEARCH",
+    "REASONING",
+    "WRITING",
     "DEEP_RESEARCH",
     "DATA_ANALYSIS",
     "DOCUMENT_ANALYSIS",
@@ -63,6 +72,7 @@ CONCEPT_KNOWLEDGE = {
     "f1 score": "The F1 Score is the harmonic mean of precision and recall. It provides a single balanced metric for evaluating classification models, especially on imbalanced datasets.",
     "auc": "AUC (Area Under the ROC Curve) measures a classification model's overall ability to distinguish between positive and negative cases across all possible decision thresholds.",
     "pr-auc": "PR-AUC (Precision-Recall Area Under Curve) evaluates precision vs. recall across decision thresholds, making it an ideal performance metric for severely imbalanced datasets.",
+    "quantum computing": "Quantum computing is a type of computing that uses quantum-mechanical phenomena — superposition, entanglement, and interference — to process information. Instead of bits that are either 0 or 1, it uses qubits, which can represent a combination of both at once. For certain problems (factoring, simulating molecules, some optimization and search tasks) this lets quantum computers explore many possibilities simultaneously and outperform classical machines. It remains an emerging technology: today's devices are limited by noise and error rates, and large-scale, fault-tolerant quantum computers are still under development.",
     "roc": "The ROC curve plots the True Positive Rate against the False Positive Rate at various classification thresholds to illustrate model diagnostic capability.",
     "xgboost": "XGBoost (Extreme Gradient Boosting) is an optimized open-source library that implements gradient boosted decision trees designed for speed, scalability, and high tabular predictive accuracy.",
     "gradient boosting": "Gradient Boosting is an ensemble machine learning technique that builds decision trees sequentially, where each new tree aims to minimize the errors made by previous trees.",
@@ -146,13 +156,23 @@ def lookup_known_answer(message: str, topic: Optional[str] = None) -> Optional[s
     Order: exact topic match -> longest whole-word knowledge key present in the
     message. This lets 'what is javascript and why it is used' resolve to the
     'javascript' entry even though the extracted topic has a trailing clause.
+
+    The knowledge match only applies when the message actually asks ABOUT a
+    known subject (or the topic was explicitly resolved from conversation
+    context). A question that merely MENTIONS a term ("analyze this problem:
+    our model misses fraud") must not get that term's canned definition — the
+    caller passes topic=None in that case so the LLM / honest fallback runs.
     """
-    if topic and topic.lower() in KNOWLEDGE:
+    if topic and topic.lower() in KNOWLEDGE and _asks_about((message or "").strip().lower()):
         return KNOWLEDGE[topic.lower()]
     text = (message or "").lower()
     for key in _KNOWLEDGE_KEYS_SORTED:
         if re.search(_whole_word_pattern(key), text):
-            return KNOWLEDGE[key]
+            # Whole-word hit: only treat it as an answer for this message when
+            # the message is asking about the term, not merely mentioning it.
+            if _asks_about(text):
+                return KNOWLEDGE[key]
+            return None
     return None
 
 
@@ -237,6 +257,11 @@ def extract_topic(message: str) -> Optional[str]:
         if extracted:
             return extracted
 
+    # "What about JavaScript?" — the subject rides in the 'about' phrase.
+    about = re.search(r"\bwhat about\s+(.+?)[?.!]*$", msg_clean)
+    if about and about.group(1).strip():
+        return about.group(1).strip()
+
     return None
 
 
@@ -252,9 +277,7 @@ _INTERROGATIVE_STARTS = (
 
 _RESEARCH_TRIGGERS = (
     "research", "investigate", "look into", "deep dive", "literature",
-    "compare papers", "compare these papers", "compare sources", "compare the",
-    "state of the art", "latest developments", "recent developments",
-    "latest research", "survey the", "find papers",
+    "state of the art", "latest research", "survey the", "find papers",
 )
 
 _ML_SIGNALS = (
@@ -270,6 +293,34 @@ _CODING_PATTERNS = [
     r"\breverse a string\b", r"\bfizz ?buzz\b", r"\bsort (a|the) list\b",
     r"\bwrite (a|me|some)\b[^.]*\b(in|using)\b[^.]*\b(python|javascript|java|c\+\+|sql|html|css)\b",
 ]
+
+# --------------------------------------------------------------------------- #
+# General-assistant tool routing (router diagram: math / web / writing / reasoning).
+# --------------------------------------------------------------------------- #
+# Explicit web-search phrasing ("search the web for X", "google X").
+_EXPLICIT_WEB_RE = re.compile(
+    r"\b(search|look\s+up|google|find)\b[^.?!]*\b(web|online|internet)\b|\bweb search\b|\bsearch online\b",
+    re.IGNORECASE,
+)
+# Current-information signals -> live web search (word-boundary matched).
+_WEB_CURRENCY_RE = re.compile(
+    r"\b(latest|news|today|tonight|yesterday|current|currently|right now|who won|"
+    r"weather|stock price|price of|release date|breaking|this week|this month)\b",
+    re.IGNORECASE,
+)
+# Comparison / multi-factor reasoning.
+_COMPARISON_RE = re.compile(
+    r"\bcompare\b|\bdifference between\b|\bvs\.?\b|\bversus\b|\bbetter than\b|"
+    r"\bworse than\b|\bpros and cons\b|\btrade-?offs?\b|"
+    r"\bwhich (is|one is|should)\b[^.?!]*\b(better|worse|best|choose|use)\b",
+    re.IGNORECASE,
+)
+# Writing tasks (checked AFTER document triggers so "summarize this pdf" stays DOCUMENT).
+_WRITING_VERBS = (
+    "summarize", "summarise", "translate", "rewrite", "proofread",
+    "shorten", "write an email", "write an essay", "write a poem",
+    "write a story", "draft a", "make it shorter", "make it longer",
+)
 
 _DATA_ANALYSIS_TRIGGERS = (
     "analyze this csv", "analyse this csv", "analyze the csv", "analyze this dataset",
@@ -293,8 +344,169 @@ _EXAMPLE_REQUEST_RE = re.compile(r"\b(show|give|provide|write)\b[^.]*\b(example|
 _BARE_EXAMPLES = {"example", "an example", "examples", "show me", "demo", "show me one", "one example"}
 
 
+# Pronoun references that resolve against the conversation's recent topic
+# ("why is it useful?", "what about that one?").
+_PRONOUN_RE = re.compile(
+    r"\b(it|its|this|that|these|those|they|them|their|the above|the former|the latter|"
+    r"the two|both|the previous one|the one above|the second approach|the first approach|the same)\b",
+    re.IGNORECASE,
+)
+
+
+def _asks_about(text_lower: str) -> bool:
+    """True when the message is asking ABOUT a subject (definitional phrasing,
+    a question about it) rather than merely mentioning the term while asking
+    something else ("analyze this problem: our model misses fraud").
+
+    Conservative by design: definitional/explanatory openings and short
+    subject-only messages qualify; longer imperative or analytical messages
+    do not.
+    """
+    t = (text_lower or "").strip()
+    if t.startswith((
+        "what is", "what are", "what's", "whats", "explain", "define",
+        "what does", "tell me about", "describe", "why is", "why are",
+        "how does", "what about",
+    )):
+        return True
+    # Short questions/messages about a subject ("who invented the telephone?",
+    # "python?") count as asking about it; long imperative/analytical messages
+    # that merely mention a term do not.
+    return len(t.split()) <= 8
+
+
+# Concept keys so generic that their presence in a question does NOT make the
+# question about them ("How does it handle missing data?" is not about "data").
+_GENERIC_SUBJECT_NOUNS = {
+    "data", "model", "dataset", "training", "feature", "label", "baseline",
+}
+
+
+def _resolve_pronoun_topic(message: str, last_topic: Optional[str]) -> Optional[str]:
+    """Return the conversation topic when the question is a pronoun follow-up.
+
+    "Why is it useful?" after discussing Python must be answered about Python.
+    Returns None when the message carries an explicit subject (a known concept,
+    a definitional phrase, or another noun) — only genuinely topic-less,
+    pronoun-bearing short follow-ups resolve to the last topic.
+    """
+    if not last_topic:
+        return None
+    text = (message or "").strip()
+    concept = match_concept(text)
+    if concept and concept not in _GENERIC_SUBJECT_NOUNS:
+        return None  # explicit SPECIFIC topic present (python, xgboost, ...)
+    # "What about JavaScript?" carries an explicit subject in the 'about' phrase.
+    about = re.search(r"\bwhat about\s+(.+?)[?.!]*$", text, re.IGNORECASE)
+    if about and about.group(1).strip():
+        return None
+    # Explicit-subject patterns ("What is recursion?"). A bare concept NOUN
+    # inside the question ("How does it handle missing data?") does NOT make
+    # the question about that noun — "data" is not the subject there.
+    explicit = re.match(
+        r"\b(?:what is|what are|what's|whats|explain|define|tell me about|describe)\s+(.+)",
+        text, re.IGNORECASE)
+    if explicit and explicit.group(1).strip():
+        return None
+    if re.search(r"\b(?:why|how|when|who|where)\b", text, re.IGNORECASE) and (
+            _PRONOUN_RE.search(text) or len(text.split()) <= 6):
+        return str(last_topic).lower()
+    return None
+
+
 def _is_example_request(msg_clean: str, msg_clean_nopunct: str) -> bool:
     return bool(_EXAMPLE_REQUEST_RE.search(msg_clean)) or msg_clean_nopunct in _BARE_EXAMPLES
+
+
+# --------------------------------------------------------------------------- #
+# Code / project analysis ("analyze this JavaScript project", "review my code").
+# Requires an analysis verb AND a code-ish object noun. Data/document requests
+# are matched earlier, so those never reach here.
+# --------------------------------------------------------------------------- #
+_CODE_ANALYSIS_RE = re.compile(
+    r"\b(analy[sz]e|review|inspect|debug|look (?:at|over)|go through)\b"
+    r"[^.]*\b(code|codebase|code base|repo|repository|project|projects|script|"
+    r"program|function|class|file|files|app|application|snippet|module)\b"
+)
+
+# --------------------------------------------------------------------------- #
+# Current-information / live-web requests ("find the latest JavaScript
+# features"). Kept deliberately conservative: bare words like "current" or
+# "today" are NOT enough on their own, to avoid hijacking general questions.
+# --------------------------------------------------------------------------- #
+_WEB_SEARCH_TRIGGERS = (
+    "latest", "most recent", "recent news", "news about", "news on",
+    "current price", "current stock", "stock price", "share price",
+    "search the web", "search online", "google", "look up online",
+    "browse the web", "find the latest", "find the current", "who won",
+    "up to date", "up-to-date", "as of today", "right now", "this week",
+    "new release", "newest version", "release date", "live score",
+    "score of", "current affairs", "what happened today",
+)
+
+# --------------------------------------------------------------------------- #
+# Safe arithmetic calculator. Uses an AST whitelist (never eval) so only numeric
+# + - * / // % ** expressions can be computed. Returns a formatted string for a
+# genuine arithmetic request, or None when the message is not a plain calculation.
+# --------------------------------------------------------------------------- #
+_CALC_STRIP_PREFIX = re.compile(
+    r"^(?:please\s+)?(?:what\s+is|whats|what's|calculate|compute|evaluate|solve|"
+    r"how\s+much\s+is)\s+",
+    re.IGNORECASE,
+)
+_ALLOWED_CALC_RE = re.compile(r"^[0-9\s\+\-\*/%\.\(\)]+$")
+_BIN_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+
+def _safe_eval(node: ast.AST) -> float:
+    if isinstance(node, ast.Expression):
+        return _safe_eval(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+        return node.value
+    if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
+        return _BIN_OPS[type(node.op)](_safe_eval(node.left), _safe_eval(node.right))
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        val = _safe_eval(node.operand)
+        return val if isinstance(node.op, ast.UAdd) else -val
+    raise ValueError("unsupported expression")
+
+
+def _try_calculate(message: str) -> Optional[str]:
+    """Return "expr = value" for a plain arithmetic request, else None."""
+    if not message:
+        return None
+    text = message.strip().lower()
+    text = re.sub(r"\bplus\b", "+", text)
+    text = re.sub(r"\bminus\b", "-", text)
+    text = re.sub(r"\b(?:times|multiplied by)\b", "*", text)
+    text = re.sub(r"\b(?:divided by|over)\b", "/", text)
+    text = re.sub(r"\b(?:to the power of|power)\b|\^", "**", text)
+    text = re.sub(r"\b(?:modulo|mod)\b", "%", text)
+    text = _CALC_STRIP_PREFIX.sub("", text)
+    text = text.replace("?", "").replace("=", " ").strip()
+    if not _ALLOWED_CALC_RE.match(text):
+        return None
+    if not re.search(r"\d", text) or not re.search(r"[\+\-\*/%]", text):
+        return None
+    # Require a real binary operation (not a lone/negative number).
+    if not re.search(r"\d\s*[\+\*/%]\s*[\(\d]", text) and not re.search(r"\d\s*-\s*\d", text):
+        return None
+    try:
+        value = _safe_eval(ast.parse(text, mode="eval"))
+    except Exception:
+        return None
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    expr = re.sub(r"\s+", " ", text).strip()
+    return f"{expr} = {value}"
 
 
 def detect_question_type(message: str) -> str:
@@ -354,6 +566,10 @@ def classify_intent(
     msg_clean = message.strip().lower()
     msg_clean_nopunct = re.sub(r'[^\w\s]', '', msg_clean).strip()
 
+    # Reset per-call: the flag records whether THIS call reached the LLM fallback,
+    # so it must never leak in from a previous message.
+    classify_intent._last_fallback_attempted = False
+
     sess = get_session(session_id)
     last_topic = payload_last_topic or sess.get("last_topic")
     pending_action = payload_pending_action or sess.get("pending_action")
@@ -370,6 +586,11 @@ def classify_intent(
         "the result", "these result", "best model", "the report", "performance",
         "the experiment", "the dataset", "this dataset", "the baseline",
         "the results", "those results", "that approach", "this approach",
+        # Evaluation-question phrasings ("which model performed best and why?",
+        # "where does it make mistakes?")
+        "which model", "make mistakes", "made mistakes", "mistakes",
+        "performed best", "performed worst", "perform best", "how did the",
+        "how does the", "did the model", "went wrong", "get wrong",
     ])
 
     # 0. Bare control verbs win while a study is active so "Continue"/"Stop"
@@ -401,9 +622,29 @@ def classify_intent(
     if _has_coding_intent(msg_clean):
         return "CODING"
 
+    # 2.5 MATHEMATICS — real calculation via the safe evaluator tools. Only claims
+    # the request when a strict evaluator can actually compute it (try_evaluate
+    # handles numeric expressions/functions/percentages; _try_calculate handles
+    # word forms like "2 plus 3"); anything else falls through instead of guessing.
+    try:
+        if try_evaluate(message) is not None or _try_calculate(message) is not None:
+            return "MATHEMATICS"
+    except Exception:
+        pass
+
+    # 2.8 Current-information signals beat the research/ML triggers — UNLESS
+    # the message carries an explicit research verb ("Research the latest
+    # developments in quantum computing." is deep research, not web search).
+    if (_WEB_CURRENCY_RE.search(msg_clean)
+            and not re.search(r"\b(?:research|investigate|deep dive|survey)\b", msg_clean)
+            and not (active_project_id and project_ref)):
+        return "WEB_SEARCH"
+
     # 3. Explicit research request. ML/prediction goals use the real dataset
     #    workflow (RESEARCH_START); general web/literature research is its own
     #    intent so it is handled honestly instead of launching a dataset search.
+    #    NOTE: comparison triggers like "compare the two" deliberately live in
+    #    REASONING, not here — a pronoun comparison is not a research request.
     if any(t in msg_clean for t in _RESEARCH_TRIGGERS):
         if any(s in msg_clean for s in _ML_SIGNALS):
             return "RESEARCH_START"
@@ -423,11 +664,36 @@ def classify_intent(
     ):
         return "RESEARCH_START"
 
+    # 3c. Explicit web-search requests ("search the web for ...", "google ...").
+    if _EXPLICIT_WEB_RE.search(msg_clean):
+        return "WEB_SEARCH"
+
+    # 3d. Comparisons / multi-factor questions -> deeper reasoning mode. This
+    # runs AFTER the research triggers so "compare these research papers" stays
+    # DEEP_RESEARCH.
+    if _COMPARISON_RE.search(msg_clean):
+        return "REASONING"
+
     # 4. Data / document analysis requests.
     if any(t in msg_clean for t in _DATA_ANALYSIS_TRIGGERS):
         return "DATA_ANALYSIS"
     if any(t in msg_clean for t in _DOCUMENT_TRIGGERS):
         return "DOCUMENT_ANALYSIS"
+
+    # 4a. WRITING tasks — summarize / translate / rewrite / draft. Runs after
+    # document triggers so "summarize this pdf" stays DOCUMENT_ANALYSIS.
+    if any(msg_clean.startswith(v) or msg_clean == v or f" {v} " in msg_clean
+           for v in _WRITING_VERBS):
+        return "WRITING"
+
+    # 4a2. CODE_ANALYSIS — review/inspect an existing codebase or project.
+    if _CODE_ANALYSIS_RE.search(msg_clean):
+        return "CODE_ANALYSIS"
+
+    # 4b. Current-information questions -> live web search ("find the latest ...",
+    # "who won ..."), unless the message references the ACTIVE study's results.
+    if _WEB_CURRENCY_RE.search(msg_clean) and not (active_project_id and project_ref):
+        return "WEB_SEARCH"
 
     # 4b. Self-referential capability / greeting questions are casual chat, not a
     #     general-knowledge question about the world (so they must not be routed
@@ -454,6 +720,18 @@ def classify_intent(
     #    active study's model/results (that is a follow-up, handled below).
     if (concept or definitional or interrogative) and not (active_project_id and project_ref):
         return "EXPLANATION"
+
+    # 5b. Project-evaluation questions ("which model performed best and why?",
+    #     "where does it make mistakes?") about the ACTIVE study are follow-ups
+    #     about real stored results — never general Q&A. Runs after EXPLANATION
+    #     so general questions without a project stay general, and AFTER the
+    #     report/details request checks below ("show me the report" references
+    #     the study but is a REPORT_REQUEST, not a follow-up question).
+    if (active_project_id and project_ref
+            and not re.search(r"\b(?:show|view|download|get|see|open)\b[^.]*\breport\b", msg_clean)
+            and not any(cmd in msg_clean for cmd in (
+                "show details", "technical details", "view logs", "show logs", "view code"))):
+        return "RESEARCH_FOLLOWUP"
 
     # 6. RESEARCH_FOLLOWUP — only with an ACTIVE project that the message actually
     #    references (project nouns or a pronoun). A bare "why"/"how" with a stale
@@ -489,7 +767,12 @@ def classify_intent(
         return "TECHNICAL_DETAILS"
 
     # 10. RESEARCH_START ("improve credit-card fraud detection", "predict churn")
-    if any(word in msg_clean for word in ["improve", "optimize", "predict", "forecast", "detect", "train", "fraud"]):
+    #     Must be an IMPERATIVE request — a bare keyword inside a narrative
+    #     sentence ("a train travels 60 mph...") must not launch research.
+    if (re.match(
+            r"^(?:please\s+|can you\s+|could you\s+|help me\s+|i want to\s+)?"
+            r"(improve|optimize|optimise|train|predict|forecast|detect)\b", msg_clean)
+            or "fraud" in msg_clean):
         return "RESEARCH_START"
 
     # 11. CASUAL_CHAT fast-path
@@ -501,13 +784,15 @@ def classify_intent(
     if not msg_clean_nopunct:
         return "CASUAL_CHAT"
 
-    # 12. LLM Intent Fallback
+    # 12. LLM Intent Fallback — runs ONLY when no rule-based stage matched.
+    #     Bounded by the request budget: skips entirely when it is exhausted.
     try:
         system_prompt = (
             "Classify user intent into EXACTLY ONE: CONFIRM_PENDING_ACTION, "
             "EXPLANATION, CODING, DEEP_RESEARCH, DATA_ANALYSIS, DOCUMENT_ANALYSIS, "
             "RESEARCH_START, RESEARCH_FOLLOWUP, RESEARCH_CONTROL, REPORT_REQUEST, "
-            "TECHNICAL_DETAILS, CASUAL_CHAT."
+            "TECHNICAL_DETAILS, CASUAL_CHAT, MATHEMATICS, WEB_SEARCH, REASONING, "
+            "WRITING."
         )
         user_prompt = f"User Input: \"{message}\"\nCategory:"
         llm_res = query_llm(user_prompt, system_prompt)
@@ -518,6 +803,9 @@ def classify_intent(
                     return cat
     except Exception:
         pass
+    # Remember that the fallback LLM was attempted (and produced nothing) so the
+    # answer path does not spend more budget re-deriving the same classification.
+    classify_intent._last_fallback_attempted = True
 
     # 13. Default to the general assistant rather than a greeting, so substantive
     #     messages get a real answer (or an honest "I'm not sure") instead of
@@ -535,22 +823,86 @@ def _honest_unknown(subject: str) -> str:
     )
 
 
-def _general_answer(message: str, topic: Optional[str]) -> str:
+def _conversation_context(session_id: Optional[str], limit: int = 6) -> str:
+    """Compact recent-turn transcript for grounding follow-ups (fixes F1/F2).
+
+    Uses the per-message history the store already records. Returns "" when there
+    is no history (e.g. a cold serverless instance where the file store did not
+    persist), so callers degrade gracefully to single-turn behaviour.
+    """
+    if not session_id:
+        return ""
+    try:
+        msgs = store.get_messages(session_id) or []
+    except Exception:
+        return ""
+    lines = []
+    for m in msgs[-limit:]:
+        role = "User" if m.get("role") == "user" else "Assistant"
+        content = (m.get("content") or "").strip().replace("\n", " ")
+        if content:
+            lines.append(f"{role}: {content[:280]}")
+    if not lines:
+        return ""
+    return (
+        "Recent conversation (context only — answer the LATEST user message):\n"
+        + "\n".join(lines) + "\n\n"
+    )
+
+
+def _general_answer(message: str, topic: Optional[str], history_ctx: str = "") -> str:
     """Answer a general question: built-in knowledge -> LLM -> honest fallback.
 
     No research/dataset/training language is injected (owner directive §2/§3).
+    A canned KB definition is only the right shape of answer for a DIRECT
+    definition/lookup ("what is X"). For why/how/compare/explain questions the
+    definition does not actually answer the question, so we reason via the LLM
+    (seeded with the KB entry and recent conversation) instead of pasting the
+    definition (fixes F3 "why is it useful?" and F4 "why does a CPU need cache?").
     """
+    qtype = detect_question_type(message)
     known = lookup_known_answer(message, topic)
-    if known:
+    if known and qtype in ("definition", "factual"):
         return known
+
+    kb_seed = (
+        f"Background you may draw on (do NOT paste verbatim unless it directly "
+        f"answers the question):\n{known}\n\n"
+    ) if known else ""
     prompt = (
-        f"Answer the user's question directly and completely in natural English.\n"
-        f"Question: \"{message}\""
+        f"{history_ctx}{kb_seed}"
+        f"Answer the user's question directly and completely in natural English. "
+        f"If it asks 'why' or 'how', give the actual reasoning — not just a "
+        f"definition. Resolve any pronoun ('it', 'that') using the recent "
+        f"conversation above.\nQuestion: \"{message}\""
     )
     llm_answer = query_llm(prompt, GENERAL_ASSISTANT_SYSTEM_PROMPT)
     if llm_answer and llm_answer.strip():
         return llm_answer.strip()
+    # No provider reachable: a KB definition is better than nothing, else be honest.
+    if known:
+        return known
     return _honest_unknown(topic or message)
+
+
+# Deterministic clock queries (fixes F8): "what is today's date", "what time is
+# it", "current date". The server has a real clock, so these must never be routed
+# to web search (which returns a Wikipedia "Today (TV programme)" abstract) or to
+# the LLM (which has no clock and would guess).
+_DATETIME_QUERY_RE = re.compile(
+    r"(?:what(?:'s|s|\s+is)?\s+(?:today'?s|the\s+)?(?:date|day|time)\b"
+    r"|today'?s\s+date\b"
+    r"|current\s+(?:date|time|day)\b"
+    r"|what\s+day\s+is\s+it\b"
+    r"|what\s+time\s+is\s+it\b"
+    r"|tell\s+me\s+the\s+(?:date|time)\b"
+    r"|do\s+you\s+know\s+the\s+(?:date|time)\b)",
+    re.IGNORECASE,
+)
+
+
+def _is_datetime_query(msg_clean: str) -> bool:
+    return bool(_DATETIME_QUERY_RE.search(msg_clean or ""))
 
 
 def handle_intent_message(
@@ -564,7 +916,28 @@ def handle_intent_message(
     Handles conversational user messages with context awareness, pronoun
     resolution, and pending-action execution. General questions get general
     answers; research is started only when the user actually asks for it.
+
+    All LLM work inside this request is bounded by a hard overall budget
+    (~10s): classification + answering combined. When the budget runs out the
+    request degrades to the honest fallback instead of hanging.
     """
+    sid = session_id or "default-session"
+    set_llm_budget(10.0)
+    try:
+        return _handle_intent_message_impl(message, active_project_id, session_id,
+                                           payload_pending_action, payload_last_topic)
+    finally:
+        clear_llm_budget()
+
+
+def _handle_intent_message_impl(
+    message: str,
+    active_project_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    payload_pending_action: Optional[Dict[str, Any]] = None,
+    payload_last_topic: Optional[str] = None
+) -> Dict[str, Any]:
+    """Original request-handling body, wrapped by handle_intent_message()."""
     sid = session_id or "default-session"
     sess = get_session(sid)
     store.update_session(sid, {"last_user_message": message})
@@ -589,8 +962,44 @@ def handle_intent_message(
 
     # Re-fetch session after updating state
     sess = get_session(sid)
-    intent = classify_intent(message, active_project_id, sid, payload_pending_action, payload_last_topic)
     msg_clean = message.strip().lower()
+
+    # Deterministic clock answer (fixes F8). Checked before routing so a date/time
+    # question never becomes a web search or an LLM guess.
+    if _is_datetime_query(msg_clean):
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc)
+        resp_text = f"It's {now.strftime('%A, %d %B %Y')}, {now.strftime('%H:%M')} UTC."
+        store.clear_pending_action(sid)
+        store.update_session(sid, {"last_assistant_message": resp_text})
+        return {
+            "intent": "EXPLANATION",
+            "taskType": "datetime",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic"),
+        }
+
+    intent = classify_intent(message, active_project_id, sid, payload_pending_action, payload_last_topic)
+
+    # The classification fallback already spent LLM budget without a match;
+    # remember that so the answer path below does not burn the remaining
+    # budget re-deriving the same thing and must go straight to the fallback.
+    if intent == "EXPLANATION" and getattr(classify_intent, "_last_fallback_attempted", False):
+        classify_intent._last_fallback_attempted = False
+        sess = get_session(sid)
+        store.update_session(sid, {"last_assistant_message": None})
+        return {
+            "intent": "EXPLANATION",
+            "taskType": "other",
+            "response": _honest_unknown(extract_topic(message) or message),
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
+        }
 
     print(f"[INTENT ROUTER] Session: {sid} | Message: '{message}' | Intent: '{intent}' | Pending Action: {sess.get('pending_action')}")
 
@@ -649,7 +1058,41 @@ def handle_intent_message(
     # 2. EXPLANATION (general Q&A) — answer the question, nothing else.
     elif intent == "EXPLANATION":
         topic = extract_topic(message)
+        # Pronoun follow-ups ("why is it useful?") resolve against the recent
+        # conversation topic so the answer stays about what we were discussing.
+        last_topic_ctx = payload_last_topic or sess.get("last_topic")
+        pronoun_topic = _resolve_pronoun_topic(message, last_topic_ctx)
+        if pronoun_topic and not topic:
+            topic = pronoun_topic
         # Prefer a known knowledge key as the canonical topic for context.
+        # Pending follow-up ("yes" after "Would you like me to show an example?"):
+        # execute exactly what was offered — a deeper answer about the same topic.
+        pending = sess.get("pending_action") or payload_pending_action
+        if pending and pending.get("type") == "EXPLAIN_MORE":
+            store.clear_pending_action(sid)
+            follow_q = (
+                f"Earlier you asked: \"{pending.get('query')}\" and I offered to go deeper. "
+                f"Now do exactly that for the topic '{pending.get('topic')}': give a concrete, "
+                f"detailed treatment (example / deeper explanation) building on the previous answer."
+            )
+            deeper = query_llm(follow_q, GENERAL_ASSISTANT_SYSTEM_PROMPT, timeout=15)
+            if not (deeper and deeper.strip()):
+                deeper = (
+                    f"Here's a concrete example for {pending.get('topic')}: I couldn't reach an "
+                    "assistant model just now, so ask me again in a moment and I'll generate it."
+                )
+            deeper = deeper.strip()
+            store.update_session(sid, {"last_assistant_message": deeper})
+            return {
+                "intent": intent,
+                "taskType": detect_question_type(message),
+                "response": deeper,
+                "action": "NONE",
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": pending.get("topic") or sess.get("last_topic")
+            }
+
         known = lookup_known_answer(message, topic)
         if known is not None:
             for key in _KNOWLEDGE_KEYS_SORTED:
@@ -657,7 +1100,23 @@ def handle_intent_message(
                     topic = key
                     break
 
-        answer = _general_answer(message, topic)
+        history_ctx = _conversation_context(sid)
+        answer = _general_answer(message, topic, history_ctx)
+        # Pronoun follow-up ("why is it useful?") where the canned definition
+        # would just be re-pasted: prefer a context-aware LLM answer about the
+        # recent topic. Skipped when a real knowledge answer already fits.
+        if (pronoun_topic and not extract_topic(message)
+                and not (topic and topic.lower() in KNOWLEDGE and answer.strip() == KNOWLEDGE[topic.lower()].strip())):
+            ctx_answer = query_llm(
+                f"The conversation was just about '{pronoun_topic}'. The user now asks: "
+                f"\"{message}\"\nAnswer the follow-up specifically about {pronoun_topic}.",
+                GENERAL_ASSISTANT_SYSTEM_PROMPT,
+                timeout=12,
+            )
+            if ctx_answer and ctx_answer.strip():
+                answer = ctx_answer.strip()
+            elif pronoun_topic in KNOWLEDGE:
+                answer = KNOWLEDGE[pronoun_topic]
 
         # A general answer is NOT an offer to do research. Clear any stale pending
         # action so a later "yes do it" does not launch unrelated research
@@ -665,7 +1124,27 @@ def handle_intent_message(
         store.clear_pending_action(sid)
         if topic:
             store.update_session(sid, {"last_topic": topic.lower()})
+            # Track the last few topics so pronoun comparisons ("compare the two")
+            # can resolve what "the two" refers to.
+            recent = list(sess.get("recent_topics") or [])
+            t_low = topic.lower()
+            if not recent or recent[-1] != t_low:
+                recent.append(t_low)
+            store.update_session(sid, {"recent_topics": recent[-4:]})
         store.update_session(sid, {"last_assistant_message": answer})
+
+        # When the answer itself offers a concrete follow-up ("Would you like me
+        # to show an example?"), register a pending action so a confirmation
+        # ("yes do it") executes exactly what was offered.
+        import re as _re
+        if _re.search(r"would you like me to", answer, _re.IGNORECASE):
+            store.set_pending_action(
+                sid,
+                action_type="EXPLAIN_MORE",
+                topic=(topic.lower() if topic else None),
+                query=message,
+                project_id=None,
+            )
 
         return {
             "intent": intent,
@@ -710,31 +1189,278 @@ def handle_intent_message(
             "lastTopic": (last_topic or "coding")
         }
 
-    # 4. DEEP_RESEARCH — explicit research request that is NOT an ML/dataset task.
-    #    Web/literature research is not wired into this deployment; be honest
-    #    rather than fabricating a browse or sources (owner directive §18).
+    # 4. DEEP_RESEARCH — real multi-step research: plan -> search -> synthesize ->
+    #    verify -> cited report. Honest fallback when no source is reachable.
     elif intent == "DEEP_RESEARCH":
         store.clear_pending_action(sid)
-        goal = re.sub(r"https?://\S+", "", message).strip()
-        resp_text = (
-            f"You've asked me to research: {goal}.\n\n"
-            "In-depth web and literature research isn't wired into this deployment "
-            "yet, so I won't pretend to browse or invent sources. If your goal is a "
-            "machine-learning or prediction problem, I can run the real research "
-            "workflow — find a suitable dataset on Hugging Face, then train and "
-            "compare models with verified metrics. Just describe the prediction "
-            "problem or paste a dataset link. For live web research, that capability "
-            "still needs to be built."
-        )
-        store.update_session(sid, {"last_assistant_message": resp_text, "last_topic": goal.lower()})
+        goal = re.sub(r"https?://\S+", "", message).strip() or message.strip()
+        # The goal must be a TOPIC, not an imperative sentence: strip leading
+        # research verbs so search queries are not polluted with them.
+        goal = re.sub(
+            r"^(?:please\s+)?(?:research|investigate|deep\s+dive\s+into|deep\s+dive|"
+            r"find\s+out\s+about|look\s+into|do\s+some\s+research\s+on|do\s+research\s+on)\s+",
+            "", goal, flags=re.IGNORECASE).strip() or goal
+        try:
+            from backend.deep_research import run_deep_research
+            research = run_deep_research(goal)
+        except Exception as dr_err:
+            print(f"[DEEP RESEARCH WARNING]: {dr_err}")
+            research = {"status": "no_sources", "report": "", "sourceCount": 0, "subqueries": []}
+        if research.get("status") == "ok" and research.get("report"):
+            resp_text = (
+                f"I ran a multi-step research pass on: {goal}\n\n"
+                f"{research['report']}\n\n"
+                f"_Pipeline: plan ({len(research['subqueries'])} sub-queries) -> web + academic "
+                f"search -> synthesis -> verification ({research['sourceCount']} sources)._"
+            )
+        else:
+            resp_text = (
+                f"You've asked me to research: {goal}.\n\n"
+                "I ran the deep-research pipeline (plan -> search -> synthesize -> verify) "
+                "but couldn't reach any web or academic source from this deployment, so I "
+                "won't pretend to have found sources. Check the search provider configuration "
+                "(TAVILY_API_KEY / SERPER_API_KEY / BRAVE_API_KEY) and network access, then "
+                "try again. If your goal is a machine-learning problem, I can instead run the "
+                "real ML workflow — find a dataset, train and compare models with verified metrics."
+            )
+        store.update_session(sid, {"last_assistant_message": resp_text, "last_topic": goal.lower()[:80]})
         return {
             "intent": intent,
-            "taskType": "research",
+            "taskType": "deep_research",
             "response": resp_text,
             "action": "NONE",
             "projectId": active_project_id,
             "pendingAction": None,
-            "lastTopic": goal.lower()
+            "lastTopic": goal.lower()[:80],
+            "research": {
+                "status": research.get("status"),
+                "sourceCount": research.get("sourceCount", 0),
+            }
+        }
+
+    # 4b. MATHEMATICS / CALCULATION — real computed answer via the safe evaluators.
+    elif intent in ("MATHEMATICS", "CALCULATION"):
+        store.clear_pending_action(sid)
+        try:
+            calc = try_evaluate(message)
+        except Exception:
+            calc = None
+        calc_str = None
+        if calc is None:
+            try:
+                calc_str = _try_calculate(message)
+            except Exception:
+                calc_str = None
+        if calc is not None:
+            resp_text = f"**{calc['expression']} = {calc['formatted']}**"
+        elif calc_str:
+            resp_text = f"**{calc_str}**"
+        else:
+            # The strict evaluators declined (e.g. a word problem): fall back to
+            # the general answer path rather than inventing a number.
+            resp_text = _general_answer(message, extract_topic(message))
+        store.update_session(sid, {"last_assistant_message": resp_text})
+        return {
+            "intent": "MATHEMATICS",
+            "taskType": "calculation",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
+        }
+
+    # 4c. WEB_SEARCH — live web results with links; honest when unreachable.
+    elif intent == "WEB_SEARCH":
+        store.clear_pending_action(sid)
+        # Extract the TOPIC: strip the imperative/trigger phrasing so search
+        # providers receive "python version", not "find the latest python version".
+        query = re.sub(
+            r"^(?:research( the web| online)?( for)?|search( the web| online)?( for)?|google( search)?( for)?|"
+            r"look ?up( online)?( for)?|"
+            r"(research |find )(the )?(latest|newest|current|most recent)( news| version| versions| features| info| information| updates| releases| developments| advancements)?( about| on| for| in)?|"
+            r"what (?:are|is|'s) the (latest|newest|current|most recent)( news| version| versions| features| info| updates| releases| developments| advancements| trends)?( about| on| for| in| with| around)?|"
+            r"latest( news| version| versions| features| updates| releases| developments| advancements)?( about| on| for| in)?|"
+            r"what(?:'s| is) the (latest|newest|current)( news| version| versions| features| updates| developments)?( about| on| for| in)?)\s+",
+            "", msg_clean, flags=re.IGNORECASE).strip() or msg_clean
+        try:
+            from backend.web_search import search_web
+            results = search_web(query, limit=5)
+        except Exception as ws_err:
+            print(f"[WEB SEARCH WARNING]: {ws_err}")
+            results = []
+        if results:
+            # Honest source framing (fixes F7/F9): a keyed provider (Tavily/Serper/
+            # Brave) returns genuinely current web results, but the keyless
+            # DuckDuckGo/Wikipedia fallback is topic reference material that may be
+            # stale. Label each case truthfully instead of claiming "live web".
+            _KEYED_SOURCES = {"Tavily", "Google (Serper)", "Brave"}
+            sources = {(r.get("source") or "") for r in results}
+            only_keyless = bool(sources) and not (sources & _KEYED_SOURCES)
+            if only_keyless:
+                lines = [
+                    f"No live web-search provider is configured, so here's "
+                    f"reference background on **{query}**:", "",
+                ]
+                footer = ("_Keyless reference sources (DuckDuckGo/Wikipedia) — this "
+                          "may not reflect the very latest; open the links to check._")
+            else:
+                lines = [f"Here's what I found on the live web for **{query}**:", ""]
+                footer = "_Live web results — open the links for full details._"
+            for i, r in enumerate(results, 1):
+                snippet = r.get("snippet") or "(no snippet — open the link)"
+                lines.append(f"{i}. **{r.get('title') or r.get('url')}** — {snippet}")
+                lines.append(f"   {r.get('url')}")
+            lines += ["", footer]
+            resp_text = "\n".join(lines)
+        else:
+            resp_text = (
+                f"I tried to search for \"{query}\" but couldn't reach any search "
+                "provider right now, and I won't invent current facts. Please try "
+                "again later, or ask me something I can answer offline."
+            )
+        store.update_session(sid, {"last_assistant_message": resp_text, "last_topic": query.lower()[:80]})
+        return {
+            "intent": intent,
+            "taskType": "web_search",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": query.lower()[:80]
+        }
+
+    # 4d. REASONING — comparisons / multi-factor questions get a structured,
+    #     deliberate answer, or a keyless structured comparison built ONLY from
+    #     the built-in knowledge base (never invented).
+    elif intent == "REASONING":
+        store.clear_pending_action(sid)
+        # Remember the comparison subjects so a later "compare the two" style
+        # pronoun follow-up can reuse them.
+        subjects = [key for key in _KNOWLEDGE_KEYS_SORTED
+                    if re.search(_whole_word_pattern(key), msg_clean)][:4]
+        if not subjects and sess.get("last_reasoning_subjects"):
+            subjects = sess.get("last_reasoning_subjects")[:4]
+        # Pronoun comparison ("compare the two", "compare both"): resolve
+        # against the recent conversation topics.
+        pronoun_cmp = bool(re.search(r"\b(?:the two|both|them|these|those)\b", msg_clean))
+        if pronoun_cmp and len(subjects) < 2:
+            recent = [t for t in (sess.get("recent_topics") or []) if t in KNOWLEDGE]
+            if len(recent) >= 2:
+                subjects = recent[-2:]
+            elif not subjects and sess.get("recent_topics"):
+                subjects = [t for t in sess["recent_topics"][-2:] if t in KNOWLEDGE]
+        # Pronoun comparisons must carry their resolved subjects into the prompt,
+        # or the model just sees "compare the two" and asks what 'the two' is.
+        cmp_prompt = (
+            f"Answer this comparison/reasoning question with a structured response "
+            f"(criteria, trade-offs, and a bottom-line recommendation): {message}"
+        )
+        if pronoun_cmp and subjects:
+            cmp_prompt = (
+                f"The conversation was recently about: {', '.join(subjects)}. "
+                + cmp_prompt
+            )
+        answer = query_llm(
+            cmp_prompt,
+            "You are a careful reasoning assistant. Structure the answer and only "
+            "state facts you are confident about; note where the answer depends on "
+            "the user's specific context.",
+            timeout=15,
+        )
+        if answer and answer.strip():
+            answer = answer.strip()
+        elif subjects:
+            answer = (
+                "Here's a structured comparison based on what I know:\n\n"
+                + "\n".join(f"- **{s[0].upper() + s[1:]}**: {KNOWLEDGE[s]}" for s in subjects)
+                + "\n\nThe right choice depends on your specific use case — tell me "
+                  "what you're building and I'll reason it through with you."
+            )
+        else:
+            answer = _honest_unknown(message)
+        store.update_session(sid, {
+            "last_assistant_message": answer,
+            **({"last_reasoning_subjects": subjects} if subjects else {}),
+        })
+        return {
+            "intent": intent,
+            "taskType": "reasoning",
+            "response": answer,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
+        }
+
+    # 4e. WRITING — summarization works offline (extractive); other writing needs
+    #     an LLM and stays honest when none is reachable.
+    elif intent == "WRITING":
+        store.clear_pending_action(sid)
+        if "summar" in msg_clean:
+            chunk = re.split(r"summar[i][sz]e\b[^:]*:?", message, maxsplit=1, flags=re.IGNORECASE)[-1].strip()
+            if len(chunk) >= 400:
+                from backend.summarizer import summarize_text
+                summary = summarize_text(chunk)
+                resp_text = (
+                    "**Summary (extractive):**\n\n" + summary
+                    + "\n\n_Key sentences extracted from your text locally — no external model needed._"
+                )
+            else:
+                resp_text = (
+                    "Paste the full text you'd like summarized (a few paragraphs or more) "
+                    "and I'll extract a summary locally. For short snippets, an abstractive "
+                    "summary needs a connected LLM provider, which isn't reachable right now."
+                )
+        else:
+            answer = query_llm(
+                f"Writing request: {message}",
+                "You are a skilled writing assistant. Produce exactly what was asked, "
+                "well-structured and on-topic.",
+            )
+            resp_text = answer.strip() if (answer and answer.strip()) else (
+                "This writing task needs a connected LLM provider, which isn't reachable "
+                "right now — and I won't return a low-quality guess. Please try again "
+                "once a provider is configured. (Exception: paste long text starting with "
+                "\"summarize\" and I can extract a summary offline.)"
+            )
+        store.update_session(sid, {"last_assistant_message": resp_text})
+        return {
+            "intent": intent,
+            "taskType": "writing",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
+        }
+
+    # 4f. CODE_ANALYSIS — review/analyze an existing codebase. Needs the actual
+    # code (pasted or an upload flow), so be specific about what to provide.
+    elif intent == "CODE_ANALYSIS":
+        store.clear_pending_action(sid)
+        answer = query_llm(
+            f"The user wants a code/project analysis or review. If specific code is "
+            f"included below, analyze it (structure, bugs, improvements). Otherwise ask "
+            f"for the code and describe what you will evaluate.\nRequest: {message}",
+            CODING_SYSTEM_PROMPT,
+        )
+        resp_text = answer.strip() if (answer and answer.strip()) else (
+            "I can review and analyze code or a project structure — paste the code (or "
+            "the relevant files) into the chat and tell me what to focus on (bugs, "
+            "performance, architecture, style). A code-analysis capability that reads "
+            "files directly from disk isn't wired into this deployment yet, so I can't "
+            "inspect a project I can't see."
+        )
+        store.update_session(sid, {"last_assistant_message": resp_text})
+        return {
+            "intent": intent,
+            "taskType": "code_analysis",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
         }
 
     # 5. DATA_ANALYSIS — point at the real tabular workflow.
@@ -762,8 +1488,10 @@ def handle_intent_message(
         store.clear_pending_action(sid)
         resp_text = (
             "Document and PDF analysis isn't wired into this deployment yet, so I "
-            "can't read an uploaded file. If you paste the text here, I can summarize "
-            "it or answer questions about it when an assistant model is connected."
+            "can't read an uploaded file. If you paste the text here (a few paragraphs "
+            "or more), I can produce an extractive summary right away — no model "
+            "connection required — and answer questions about it when an assistant "
+            "model is connected."
         )
         store.update_session(sid, {"last_assistant_message": resp_text})
         return {
@@ -865,7 +1593,16 @@ def handle_intent_message(
             }
         elif "continue" in msg_clean or "resume" in msg_clean:
             if active_project_id:
-                store.set_control_signal(active_project_id, "RUN")
+                # Resume must actually DO something: a live (paused) run is
+                # unpaused, but a run whose thread died (server restart, crash)
+                # is relaunched from the project's stored dataset path. Fall
+                # back to the plain signal flip if the orchestrator import fails.
+                try:
+                    from agents.orchestrator import resume_pipeline
+                    resume_pipeline(active_project_id)
+                except Exception as resume_err:
+                    print(f"[RESUME WARNING]: {resume_err}")
+                    store.set_control_signal(active_project_id, "RUN")
             return {
                 "intent": intent,
                 "response": "Resuming the active research pipeline...",
@@ -911,12 +1648,17 @@ def handle_intent_message(
     store.clear_pending_action(sid)
     if "what can you do" in msg_clean or "help" in msg_clean:
         content = (
-            "I'm a general-purpose AI assistant with a built-in autonomous ML "
-            "research workflow. 👋\n\n"
-            "I can answer everyday questions, explain concepts, help with coding "
-            "and analysis, and — when you ask for it — research a machine-learning "
-            "problem: find a real dataset, train models, compare results, and "
-            "explain what I find."
+            "I'm a general-purpose AI assistant. 👋\n\n"
+            "I pick the right mode for each request automatically:\n"
+            "- Answer general questions and explain concepts\n"
+            "- Calculate math precisely (try \"what is 15% of 240\" or \"sqrt(144)\")\n"
+            "- Help with coding: write, explain, debug and review code\n"
+            "- Search the live web for current information (\"find the latest Python version\")\n"
+            "- Run multi-step deep research with cited sources (\"research how JavaScript evolved\")\n"
+            "- Summarize long text, draft and rewrite writing (translate with an LLM connected)\n"
+            "- Compare options with structured reasoning\n"
+            "- Analyze datasets and run real ML experiments when you ask for it\n\n"
+            "Just talk to me normally — I'll route your request to the right capability."
         )
     elif "hello" in msg_clean:
         content = "Hello! 👋 What can I help you with?"

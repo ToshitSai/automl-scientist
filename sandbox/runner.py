@@ -14,6 +14,53 @@ def is_docker_available() -> bool:
     except Exception:
         return False
 
+def build_docker_run_args(temp_dir: str, dataset_path: str, extra_env: dict = None) -> list:
+    """
+    Build the `docker run` argv for an experiment (pure helper, unit-testable).
+
+    The dataset — and the held-out test split when its host path exists — are
+    mounted under /app with their REAL basenames, and DATASET_PATH / TEST_PATH
+    are pointed at the container paths:
+      * mounting a parquet file as 'dataset.csv' breaks the extension-based
+        readers inside generated experiment scripts;
+      * host paths (e.g. TEST_PATH set by the orchestrator) do not exist inside
+        the container, so any host TEST_PATH is overridden with the mounted
+        container path.
+    """
+    extra_env = extra_env or {}
+    dataset_name = os.path.basename(str(dataset_path).replace("\\", "/")) or "dataset"
+    container_dataset = f"/app/dataset/{dataset_name}"
+
+    env = {
+        "DATASET_PATH": container_dataset,
+        "METRICS_PATH": "/app/metrics.json",
+    }
+    for k, v in extra_env.items():
+        if v is not None:
+            env[k] = str(v)
+
+    mounts = [
+        f"{temp_dir}:/app",
+        f"{dataset_path}:{container_dataset}:ro",
+    ]
+
+    host_test_path = extra_env.get("TEST_PATH")
+    if host_test_path and os.path.exists(str(host_test_path)):
+        test_name = os.path.basename(str(host_test_path).replace("\\", "/")) or "test"
+        container_test = f"/app/test/{test_name}"
+        mounts.append(f"{host_test_path}:{container_test}:ro")
+        env["TEST_PATH"] = container_test  # container path replaces host path
+
+    cmd = ["docker", "run", "--rm"]
+    for m in mounts:
+        cmd += ["-v", m]
+    cmd += ["--cpus=2", "--memory=2g", "--network=none"]
+    for k, v in env.items():
+        cmd += ["-e", f"{k}={v}"]
+    cmd += ["python:3.11-slim", "python", "/app/experiment.py"]
+    return cmd
+
+
 def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_sec: int = 60,
                                  extra_env: dict = None) -> Dict[str, Any]:
     """
@@ -40,20 +87,7 @@ def execute_sandboxed_experiment(script_code: str, dataset_path: str, timeout_se
 
         if docker_ready:
             try:
-                cmd = [
-                    "docker", "run", "--rm",
-                    "-v", f"{temp_dir}:/app",
-                    "-v", f"{dataset_path}:/app/dataset.csv:ro",
-                    "--cpus=2",
-                    "--memory=2g",
-                    "--network=none",
-                    "-e", "DATASET_PATH=/app/dataset.csv",
-                    "-e", f"METRICS_PATH=/app/metrics.json",
-                ]
-                for k, v in extra_env.items():
-                    if v is not None:
-                        cmd += ["-e", f"{k}={v}"]
-                cmd += ["python:3.11-slim", "python", "/app/experiment.py"]
+                cmd = build_docker_run_args(temp_dir, dataset_path, extra_env)
                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_sec)
                 stdout = proc.stdout
                 stderr = proc.stderr

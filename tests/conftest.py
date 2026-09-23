@@ -27,3 +27,19 @@ def no_llm(monkeypatch):
     """Force every LLM call to return None (simulates unavailable/invalid keys)."""
     monkeypatch.setattr(llm_mod, "query_llm", lambda *a, **k: None)
     monkeypatch.setattr(intent_mod, "query_llm", lambda *a, **k: None)
+
+
+@pytest.fixture(autouse=True)
+def no_network_tools(monkeypatch):
+    """Keep the unit suite hermetic: patch the low-level search providers (not
+    search_web itself) so no test touches the network, while the real provider
+    selection logic stays testable. Tests can still stub higher-level layers."""
+    import backend.web_search as ws
+    import backend.literature_search as ls
+    import backend.deep_research as dr
+    for name in ("_search_tavily", "_search_serper", "_search_brave", "_search_duckduckgo"):
+        monkeypatch.setattr(ws, name, lambda *a, **k: [])
+    monkeypatch.setattr(ls, "search_literature", lambda *a, **k: [])
+    monkeypatch.setattr(dr, "search_web", lambda *a, **k: [])
+    monkeypatch.setattr(dr, "search_literature", lambda *a, **k: [])
+    monkeypatch.setattr(dr, "query_llm", lambda *a, **k: None)

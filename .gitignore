@@ -10,3 +10,5 @@ uploaded_datasets/
 test_workspace/
 __pycache__/
 *.pyc
+.aider*
+.env*

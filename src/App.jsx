@@ -3,7 +3,21 @@ import Sidebar from './components/Sidebar';
 import ResearchStartScreen from './components/ResearchStartScreen';
 import ResearchChatWorkspace from './components/ResearchChatWorkspace';
 import SettingsModal from './components/SettingsModal';
-import { fetchProjects, fetchProjectDetails, sendChatMessage, fetchSettings, approveDataset } from './api';
+import { fetchProjects, fetchProjectDetails, sendChatMessage, fetchSettings, approveDataset, fetchConversationMessages } from './api';
+
+// One conversation per project so the FIRST message (sent from the start
+// screen) and every workspace follow-up share the same server-side memory.
+function getConversationId(projectId) {
+  if (!projectId) return null;
+  const key = 'ai-scientist-conv-' + projectId;
+  let conv = null;
+  try { conv = localStorage.getItem(key); } catch (e) { /* private mode */ }
+  if (!conv) {
+    conv = 'conv-' + projectId + '-' + Math.random().toString(36).substring(2, 9);
+    try { localStorage.setItem(key, conv); } catch (e) { /* ignore */ }
+  }
+  return conv;
+}
 
 export default function App() {
   const [projects, setProjects] = useState([]);
@@ -15,6 +29,7 @@ export default function App() {
   const [dockerReady, setDockerReady] = useState(false);
   const [llmConfigured, setLlmConfigured] = useState(false);
   const [isInChatWorkspace, setIsInChatWorkspace] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
 
   const loadProjects = async () => {
     const list = await fetchProjects();
@@ -54,8 +69,13 @@ export default function App() {
     setChatMessages([userMsg]);
     setIsInChatWorkspace(true);
 
+    // A fresh chat without an active project still gets its own conversation
+    // id so follow-ups keep the same memory.
+    const convId = conversationId || getConversationId(activeProject?.id || 'general-' + Date.now().toString(36));
+    setConversationId(convId);
+
     try {
-      const res = await sendChatMessage(userText, activeProject?.id);
+      const res = await sendChatMessage(userText, activeProject?.id, convId, null, null);
       const assistantMsg = {
         id: Date.now() + 1,
         role: 'assistant',
@@ -93,7 +113,11 @@ export default function App() {
         { id: Date.now() + 2, role: 'assistant', content: res.response || `Loading ${repoId}...` }
       ]);
       if (res.project) {
+        const projId = res.project.id;
         setActiveProject(res.project);
+        // Rebind the conversation to the new project so follow-ups about the
+        // study share the pre-approval chat context.
+        setConversationId(getConversationId(projId));
         await loadProjects();
       }
     } catch (err) {
@@ -106,10 +130,36 @@ export default function App() {
     }
   };
 
+  // Clicking a project in the sidebar: load its conversation history so the
+  // chat survives page refreshes and switching between studies.
+  const handleSelectProject = async (proj) => {
+    setActiveProject(proj);
+    setIsInChatWorkspace(true);
+    const convId = getConversationId(proj.id);
+    setConversationId(convId);
+    setChatMessages([]);
+    try {
+      const msgs = await fetchConversationMessages(convId);
+      const mapped = (msgs || []).map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        intent: m.intent,
+        datasets: null,
+        recommendation: null,
+        researchQuery: null
+      }));
+      setChatMessages(mapped);
+    } catch (e) {
+      setChatMessages([]);
+    }
+  };
+
   const handleNewResearchClick = () => {
     setActiveProject(null);
     setChatMessages([]);
     setIsInChatWorkspace(false);
+    setConversationId(null);
   };
 
   return (
@@ -119,10 +169,7 @@ export default function App() {
       <Sidebar
         projects={projects}
         activeProject={activeProject}
-        setActiveProject={(proj) => {
-          setActiveProject(proj);
-          setIsInChatWorkspace(true);
-        }}
+        setActiveProject={handleSelectProject}
         onNewResearch={handleNewResearchClick}
         onOpenSettings={() => setIsSettingsOpen(true)}
         dockerReady={dockerReady}
@@ -146,6 +193,7 @@ export default function App() {
             setChatMessages={setChatMessages}
             onApproveDataset={handleApproveDataset}
             isApproving={isApproving}
+            conversationId={conversationId || getConversationId(activeProject?.id || 'general')}
           />
         )}
       </main>
