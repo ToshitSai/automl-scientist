@@ -17,6 +17,9 @@ def isolate_store(tmp_path, monkeypatch):
     """Point the store singleton at a temp file, reset state, disable writes."""
     store = store_mod.store
     monkeypatch.setattr(store, "filepath", str(tmp_path / "store.json"))
+    # Never let a developer's local DATABASE_URL turn the unit suite into a live
+    # DB test: the isolated store must use the in-memory/temp-file path only.
+    monkeypatch.setattr(store, "backend", None)
     store.data = store._default_state()
     monkeypatch.setattr(store, "save", lambda *a, **k: None)
     return store

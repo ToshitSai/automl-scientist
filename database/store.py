@@ -4,6 +4,13 @@ import threading
 import tempfile
 from typing import Dict, Any, List, Optional
 
+# Ensure a local .env is loaded so DATABASE_URL is visible in dev too. On Vercel
+# the value is a real environment variable and this is a no-op.
+try:
+    import backend.config  # noqa: F401
+except Exception:
+    pass
+
 def get_default_store_path():
     local_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database")
     try:
@@ -26,9 +33,40 @@ class ResearchStore:
         # RLock: public mutators hold the lock while mutating AND saving; save()
         # re-acquires it (reentrant) instead of deadlocking.
         self.lock = threading.RLock()
+        # Optional Postgres backend (Neon). When DATABASE_URL is set, state is
+        # mirrored into a real DB so it survives Vercel's ephemeral filesystem
+        # and is shared across instances. When unset (local dev, tests) the store
+        # uses the JSON file exactly as before.
+        self.backend = self._make_backend()
         self._load()
 
+    @staticmethod
+    def _make_backend():
+        url = (os.environ.get("DATABASE_URL") or "").strip()
+        if not url:
+            return None
+        try:
+            from database.db import PostgresBackend
+            return PostgresBackend(url)
+        except Exception as e:
+            print(f"[STORE DB INIT WARNING]: {e}")
+            return None
+
     def _load(self):
+        # DB is the source of truth when configured; fall back to the file on any
+        # error or when the table is empty (first run).
+        if self.backend is not None:
+            try:
+                data = self.backend.load_all(self._default_state())
+                if data is not None:
+                    self.data = data
+                    return
+            except Exception as e:
+                print(f"[STORE DB LOAD WARNING]: {e}")
+                self.backend.reset()
+        self._load_file()
+
+    def _load_file(self):
         try:
             os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
             if os.path.exists(self.filepath):
@@ -60,13 +98,33 @@ class ResearchStore:
             }
         }
 
-    def save(self):
-        """Persist atomically: write to a temp file, then os.replace().
+    def save(self, namespace: Optional[str] = None, key: Optional[str] = None):
+        """Persist state.
 
-        The old in-place open(path, 'w') truncated the store before writing; a
-        crash mid-write left a corrupted file that _load() then silently
-        replaced with an empty default state (total data loss).
+        With a Postgres backend, writes go to the DB — a single row when
+        ``namespace``/``key`` are given (the common, cheap path), otherwise every
+        row. Any DB error drops the connection and falls back to the JSON file so
+        a transient outage never loses the write silently or crashes the request.
+
+        Without a backend, atomically rewrites the JSON file: write to a temp
+        file, then os.replace(). (The old in-place open(path, 'w') truncated the
+        store before writing; a crash mid-write left a corrupted file that
+        _load() then silently replaced with an empty default state — total loss.)
         """
+        with self.lock:
+            if self.backend is not None:
+                try:
+                    if namespace is not None and key is not None:
+                        self.backend.save_row(namespace, str(key), self.data[namespace][key])
+                    else:
+                        self.backend.save_all(self.data)
+                    return
+                except Exception as e:
+                    print(f"[STORE DB SAVE WARNING]: {e}")
+                    self.backend.reset()
+            self._save_file()
+
+    def _save_file(self):
         with self.lock:
             try:
                 dir_name = os.path.dirname(self.filepath) or "."
@@ -134,7 +192,7 @@ class ResearchStore:
         }
         with self.lock:
             self.data["projects"][project_id] = project
-            self.save()
+            self.save("projects", project_id)
         return project
 
     def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
@@ -147,7 +205,7 @@ class ResearchStore:
         with self.lock:
             if project_id in self.data["projects"]:
                 self.data["projects"][project_id].update(updates)
-                self.save()
+                self.save("projects", project_id)
 
     def update_stage_state(self, project_id: str, stage: str, state: str):
         """Updates a specific stage state in the run state machine (NOT_STARTED, RUNNING, COMPLETED, FAILED, NOT_CONFIGURED)."""
@@ -155,7 +213,7 @@ class ResearchStore:
             if project_id in self.data["projects"]:
                 proj = self.data["projects"][project_id]
                 proj.setdefault("stageStates", {})[stage] = state
-                self.save()
+                self.save("projects", project_id)
 
     def add_event(self, project_id: str, event_type: str, details: Optional[Dict[str, Any]] = None):
         """Emits a structured backend event."""
@@ -168,7 +226,7 @@ class ResearchStore:
                     "details": details or {}
                 }
                 self.data["projects"][project_id].setdefault("events", []).append(evt)
-                self.save()
+                self.save("projects", project_id)
 
     def set_control_signal(self, project_id: str, signal: str):
         with self.lock:
@@ -180,7 +238,7 @@ class ResearchStore:
                     self.data["projects"][project_id]["status"] = "PAUSED"
                 elif signal == "RUN" and self.data["projects"][project_id]["status"] in ["PAUSED", "STOPPED"]:
                     self.data["projects"][project_id]["status"] = "IN_PROGRESS"
-                self.save()
+                self.save("projects", project_id)
 
     def add_agent_log(self, project_id: str, agent_name: str, message: str, status: str = "IN_PROGRESS"):
         import datetime
@@ -194,12 +252,12 @@ class ResearchStore:
                     "message": message,
                     "status": status
                 })
-                self.save()
+                self.save("projects", project_id)
 
     def save_dataset_report(self, project_id: str, report: Dict[str, Any]):
         with self.lock:
             self.data["datasets"][project_id] = report
-            self.save()
+            self.save("datasets", project_id)
 
     def get_dataset_report(self, project_id: str) -> Optional[Dict[str, Any]]:
         return self.data["datasets"].get(project_id)
@@ -207,7 +265,7 @@ class ResearchStore:
     def save_baselines(self, project_id: str, baselines: List[Dict[str, Any]]):
         with self.lock:
             self.data["baselines"][project_id] = baselines
-            self.save()
+            self.save("baselines", project_id)
 
     def get_baselines(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["baselines"].get(project_id, [])
@@ -215,7 +273,7 @@ class ResearchStore:
     def save_tree_nodes(self, project_id: str, nodes: List[Dict[str, Any]]):
         with self.lock:
             self.data["tree_nodes"][project_id] = nodes
-            self.save()
+            self.save("tree_nodes", project_id)
 
     def get_tree_nodes(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["tree_nodes"].get(project_id, [])
@@ -223,7 +281,7 @@ class ResearchStore:
     def save_error_analysis(self, project_id: str, analysis: Dict[str, Any]):
         with self.lock:
             self.data["error_analyses"][project_id] = analysis
-            self.save()
+            self.save("error_analyses", project_id)
 
     def get_error_analysis(self, project_id: str) -> Optional[Dict[str, Any]]:
         return self.data["error_analyses"].get(project_id)
@@ -231,7 +289,7 @@ class ResearchStore:
     def save_literature(self, project_id: str, papers: List[Dict[str, Any]]):
         with self.lock:
             self.data["literature"][project_id] = papers
-            self.save()
+            self.save("literature", project_id)
 
     def get_literature(self, project_id: str) -> List[Dict[str, Any]]:
         return self.data["literature"].get(project_id, [])
@@ -239,7 +297,7 @@ class ResearchStore:
     def save_report(self, project_id: str, report_md: str):
         with self.lock:
             self.data["reports"][project_id] = report_md
-            self.save()
+            self.save("reports", project_id)
 
     def reconcile_stale_runs(self) -> List[str]:
         """Mark runs stuck in a non-terminal state as FAILED (startup reconciliation).
@@ -280,6 +338,18 @@ class ResearchStore:
     def get_session(self, session_id: str) -> Dict[str, Any]:
         sid = session_id or "default-session"
         with self.lock:
+            # DB-fresh read: different turns of one conversation can land on
+            # different serverless instances, so a warm in-memory copy may be
+            # stale. Re-reading the single session row keeps memory consistent
+            # across instances. Skipped entirely when no DB is configured.
+            if self.backend is not None:
+                try:
+                    row = self.backend.get_row("sessions", sid)
+                    if row is not None:
+                        self.data.setdefault("sessions", {})[sid] = row
+                except Exception as e:
+                    print(f"[STORE DB SESSION READ WARNING]: {e}")
+                    self.backend.reset()
             sessions = self.data.setdefault("sessions", {})
             if sid not in sessions:
                 sessions[sid] = {
@@ -291,7 +361,7 @@ class ResearchStore:
                     "active_project_id": None,
                     "messages": []
                 }
-                self.save()
+                self.save("sessions", sid)
             return sessions[sid]
 
     def update_session(self, session_id: str, updates: Dict[str, Any]):
@@ -299,7 +369,7 @@ class ResearchStore:
         with self.lock:
             sess = self.get_session(sid)
             sess.update(updates)
-            self.save()
+            self.save("sessions", sid)
 
     def set_pending_action(self, session_id: str, action_type: str, topic: Optional[str] = None, query: Optional[str] = None, project_id: Optional[str] = None):
         self.update_session(session_id, {
@@ -344,7 +414,7 @@ class ResearchStore:
             })
             if len(history) > max_history:
                 del history[:len(history) - max_history]
-            self.save()
+            self.save("sessions", sid)
 
     def get_messages(self, session_id: str) -> List[Dict[str, Any]]:
         sess = self.get_session(session_id or "default-session")
