@@ -1,185 +1,93 @@
-"""Tests for the Postgres (Neon) store backend and its integration with
-ResearchStore.
+"""Cross-instance persistence tests (the reason the Postgres layer exists).
 
-Hermetic: no real database or network. A fake backend/table stands in for Neon
-so we can prove the two properties that matter for cross-session memory:
-  1. Session writes are persisted per-row (namespace='sessions', key=session_id).
-  2. A *second* store instance (a cold serverless instance) reading the same
-     table sees the first instance's messages — i.e. memory survives restarts.
+The legacy kv_store mirror tests were retired with the KV backend; these are
+the equivalent guarantees against the new architecture: two ResearchStore
+facades sharing one repository behave like two serverless instances over one
+database — session writes from one are visible to the other, including a cold
+instance constructed *after* the writes and a warm instance constructed before.
 """
 import pytest
 
-from database.db import PostgresBackend, rows_from_data, data_from_rows
+import database.store as store_mod
 
 
 @pytest.fixture(autouse=True)
 def _no_real_db(monkeypatch):
-    """Construct stores without a real DATABASE_URL so __init__ never attempts a
-    live connection; tests inject a fake backend explicitly."""
+    """Construct stores without a real DATABASE_URL; the fake is injected."""
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(store_mod, "DB_DISABLED", False)
+    monkeypatch.setattr(store_mod.ResearchStore, "_make_repo",
+                        staticmethod(lambda: None))
 
 
-# --------------------------------------------------------------------------- #
-# Pure serialization helpers
-# --------------------------------------------------------------------------- #
-def test_rows_from_data_splits_id_keyed_namespaces_and_reserves_settings():
-    data = {
-        "projects": {"p1": {"id": "p1"}, "p2": {"id": "p2"}},
-        "sessions": {"s1": {"messages": []}},
-        "baselines": {"p1": [{"acc": 0.9}]},       # value is a list
-        "reports": {"p1": "# markdown string"},     # value is a string
-        "settings": {"llmProvider": "x", "apiKeySet": True},  # flat dict
-    }
-    rows = dict(((ns, k), v) for (ns, k, v) in rows_from_data(data))
+class SharedRepo:
+    """Minimal repository standing in for Postgres: one shared 'table' across
+    every ResearchStore that receives this same instance (or a clone sharing
+    the same dicts), like two serverless instances over one database."""
 
-    assert rows[("projects", "p1")] == {"id": "p1"}
-    assert rows[("projects", "p2")] == {"id": "p2"}
-    assert rows[("sessions", "s1")] == {"messages": []}
-    assert rows[("baselines", "p1")] == [{"acc": 0.9}]
-    assert rows[("reports", "p1")] == "# markdown string"
-    # settings is stored whole under the reserved key, not split per-field.
-    assert rows[("settings", "_")] == {"llmProvider": "x", "apiKeySet": True}
+    def __init__(self, tables=None):
+        self.tables = tables if tables is not None else {
+            "sessions": {},   # sid -> context dict
+            "messages": {},   # sid -> [message dicts]
+            "conversations": set(),
+        }
 
+    # -- conversations / messages -------------------------------------------
+    def ensure_conversation(self, conversation_id, user_id=None):
+        self.tables["conversations"].add(conversation_id)
+        self.tables["messages"].setdefault(conversation_id, [])
 
-def test_data_from_rows_round_trips():
-    original = {
-        "projects": {"p1": {"id": "p1", "status": "DONE"}},
-        "sessions": {"s1": {"messages": [{"role": "user", "content": "hi"}]}},
-        "settings": {"llmProvider": "Mistral"},
-        "reports": {},
-    }
-    base = {"projects": {}, "sessions": {}, "settings": {}, "reports": {}, "datasets": {}}
-    rebuilt = data_from_rows(rows_from_data(original), base)
-    assert rebuilt["projects"] == original["projects"]
-    assert rebuilt["sessions"] == original["sessions"]
-    assert rebuilt["settings"] == original["settings"]
-    assert rebuilt["reports"] == {}
+    def record_message(self, conversation_id, role, content, intent=None,
+                       topic=None, research_id=None, pending_action=None,
+                       message_id=None, created_at=None):
+        self.ensure_conversation(conversation_id)
+        message = {"id": message_id or f"m{len(self.tables['messages'][conversation_id])}",
+                   "conversation_id": conversation_id, "role": role,
+                   "content": content, "timestamp": created_at or "now",
+                   "intent": intent, "topic": topic,
+                   "research_id": research_id, "pending_action": pending_action}
+        self.tables["messages"][conversation_id].append(message)
+        return message
 
+    def get_messages(self, conversation_id, limit=200):
+        return list(self.tables["messages"].get(conversation_id, []))[:limit]
 
-# --------------------------------------------------------------------------- #
-# PostgresBackend against a fake connection (verifies SQL + JSONB wrapping)
-# --------------------------------------------------------------------------- #
-class _FakeCursor:
-    def __init__(self, one=None, many=None):
-        self._one = one
-        self._many = many or []
+    # -- session context ------------------------------------------------------
+    def get_session(self, session_id):
+        session = {"session_id": session_id, "last_user_message": None,
+                   "last_assistant_message": None, "last_topic": None,
+                   "last_reasoning_subjects": [], "recent_topics": [],
+                   "pending_action": None, "active_project_id": None}
+        session.update(self.tables["sessions"].get(session_id, {}))
+        session["messages"] = self.get_messages(session_id)
+        return session
 
-    def fetchone(self):
-        return self._one
-
-    def fetchall(self):
-        return self._many
-
-    def executemany(self, sql, seq):
-        for params in seq:
-            self._conn._insert(params)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
+    def update_session(self, session_id, updates):
+        if not updates:
+            return
+        updates = {k: v for k, v in updates.items()
+                   if k not in ("messages", "session_id")}
+        self.ensure_conversation(session_id)
+        self.tables["sessions"].setdefault(session_id, {}).update(updates)
 
 
-class _FakeConn:
-    """Mimics the slice of the psycopg connection API the backend uses, backed
-    by an in-memory {(namespace, key): value} table."""
-    closed = False
-
-    def __init__(self):
-        self.table = {}
-
-    def _insert(self, params):
-        ns, key, wrapped = params
-        # The backend wraps values in psycopg's Json adapter; unwrap via .obj.
-        self.table[(ns, key)] = getattr(wrapped, "obj", wrapped)
-
-    def execute(self, sql, params=None):
-        s = sql.strip()
-        if s.startswith("SELECT value"):
-            val = self.table.get((params[0], params[1]))
-            return _FakeCursor(one=(val,) if val is not None else None)
-        if s.startswith("SELECT namespace"):
-            return _FakeCursor(many=[(ns, k, v) for (ns, k), v in self.table.items()])
-        if "INSERT INTO kv_store" in s:
-            self._insert(params)
-            return _FakeCursor()
-        return _FakeCursor()  # CREATE TABLE etc.
-
-    def cursor(self):
-        cur = _FakeCursor()
-        cur._conn = self
-        return cur
-
-    def commit(self):
-        pass
-
-
-def test_backend_save_get_load_round_trip(monkeypatch):
-    pytest.importorskip("psycopg")
-    backend = PostgresBackend("postgresql://unused")
-    fake = _FakeConn()
-    monkeypatch.setattr(backend, "_ready", lambda: fake)
-
-    backend.save_row("sessions", "s1", {"messages": [{"content": "hello"}]})
-    assert backend.get_row("sessions", "s1") == {"messages": [{"content": "hello"}]}
-    assert backend.get_row("sessions", "missing") is None
-
-    loaded = backend.load_all({"sessions": {}, "projects": {}})
-    assert loaded["sessions"]["s1"]["messages"][0]["content"] == "hello"
-
-
-def test_backend_load_all_returns_none_on_empty_table(monkeypatch):
-    pytest.importorskip("psycopg")
-    backend = PostgresBackend("postgresql://unused")
-    monkeypatch.setattr(backend, "_ready", lambda: _FakeConn())
-    assert backend.load_all({"sessions": {}}) is None
-
-
-# --------------------------------------------------------------------------- #
-# ResearchStore integration: cross-instance (cold-start) memory persistence
-# --------------------------------------------------------------------------- #
-class _SharedFakeBackend:
-    """Stands in for PostgresBackend but shares one table across instances, so
-    two ResearchStore objects behave like two serverless instances over one DB."""
-    def __init__(self, table):
-        self.table = table
-
-    def load_all(self, base):
-        if not self.table:
-            return None
-        return data_from_rows([(ns, k, v) for (ns, k), v in self.table.items()], base)
-
-    def get_row(self, ns, key):
-        return self.table.get((ns, key))
-
-    def save_row(self, ns, key, value):
-        self.table[(ns, key)] = value
-
-    def save_all(self, data):
-        for ns, k, v in rows_from_data(data):
-            self.table[(ns, k)] = v
-
-    def reset(self):
-        pass
-
-
-def _make_store(tmp_path, table, name):
-    import database.store as store_mod
+def _make_store(tmp_path, repo, name):
     s = store_mod.ResearchStore(filepath=str(tmp_path / f"{name}.json"))
-    s.backend = _SharedFakeBackend(table)
+    s.repo = repo
+    s.backend = repo
+    s._db_healthy = True
     return s
 
 
 def test_memory_persists_across_cold_instances(tmp_path):
-    table = {}
+    repo = SharedRepo()
     # Instance A handles turn 1 and records a message.
-    a = _make_store(tmp_path, table, "a")
+    a = _make_store(tmp_path, repo, "a")
     a.update_session("conv-1", {"last_topic": "gradient descent"})
     a.record_message("conv-1", "user", "Tell me about gradient descent")
 
-    # A brand-new instance (cold start) reads the same table and must see it.
-    b = _make_store(tmp_path, table, "b")
+    # A brand-new instance (cold start) over the same DB must see it.
+    b = _make_store(tmp_path, repo, "b")
     msgs = b.get_messages("conv-1")
     assert len(msgs) == 1
     assert msgs[0]["role"] == "user"
@@ -187,34 +95,32 @@ def test_memory_persists_across_cold_instances(tmp_path):
     assert b.get_session("conv-1")["last_topic"] == "gradient descent"
 
 
-def test_session_row_is_written_under_sessions_namespace(tmp_path):
-    table = {}
-    s = _make_store(tmp_path, table, "s")
-    s.record_message("conv-9", "assistant", "hi there")
-    # Exactly one row, keyed to the session — not a single global blob.
-    assert ("sessions", "conv-9") in table
-    assert table[("sessions", "conv-9")]["messages"][0]["content"] == "hi there"
-
-
-def test_warm_instance_rereads_session_written_by_another_instance(tmp_path):
-    table = {}
-    a = _make_store(tmp_path, table, "a")
-    b = _make_store(tmp_path, table, "b")
+def test_warm_instance_sees_messages_written_by_another_instance(tmp_path):
+    repo = SharedRepo()
+    a = _make_store(tmp_path, repo, "a")
+    b = _make_store(tmp_path, repo, "b")
     # A records first; B (already constructed, warm) must still see it because
-    # get_session re-reads the row from the backend on every access.
+    # get_messages reads through to the repository on every access.
     a.record_message("conv-x", "user", "first")
     b.record_message("conv-x", "assistant", "second")
     contents = [m["content"] for m in b.get_messages("conv-x")]
     assert contents == ["first", "second"]
 
 
-def test_file_backend_used_when_no_database_url(tmp_path, monkeypatch):
-    """No DATABASE_URL -> backend is None -> the JSON file path still works."""
+def test_message_rows_are_keyed_to_their_conversation(tmp_path):
+    repo = SharedRepo()
+    s = _make_store(tmp_path, repo, "s")
+    s.record_message("conv-9", "assistant", "hi there")
+    assert "conv-9" in repo.tables["conversations"]
+    assert repo.tables["messages"]["conv-9"][0]["content"] == "hi there"
+
+
+def test_file_backend_still_works_when_no_repo(tmp_path, monkeypatch):
+    """No DATABASE_URL -> repo is None -> the JSON file path is the store."""
     import database.store as store_mod
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(store_mod, "DB_DISABLED", True)
     s = store_mod.ResearchStore(filepath=str(tmp_path / "file.json"))
-    assert s.backend is None
+    assert s.repo is None
     s.record_message("conv-file", "user", "persisted to disk")
-    # Reload from the file with a fresh instance.
     s2 = store_mod.ResearchStore(filepath=str(tmp_path / "file.json"))
     assert s2.get_messages("conv-file")[0]["content"] == "persisted to disk"

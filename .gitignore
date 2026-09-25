@@ -7,6 +7,9 @@ upstream_ai_scientist_v2
 .vercel
 experiments/
 uploaded_datasets/
+object_store/
+backups/
+pgdata*/
 test_workspace/
 __pycache__/
 *.pyc

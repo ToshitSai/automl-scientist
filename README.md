@@ -39,7 +39,7 @@ recall?", "what is XGBoost?") directly, without launching a research run.
 | Frontend | React 19, Vite 6, Tailwind CSS 4, Recharts, lucide-react |
 | Backend  | FastAPI, Uvicorn (Python 3.10+)                          |
 | ML       | pandas, numpy, scikit-learn, XGBoost, pyarrow            |
-| Storage  | Local JSON file store (`database/research_store.json`)   |
+| Storage  | **PostgreSQL 16 + pgvector** (source of truth) with local-JSON fallback |
 | External | Hugging Face Hub API, OpenAlex, Semantic Scholar (keyless) |
 | Tests    | pytest                                                   |
 
@@ -66,7 +66,33 @@ cd "model nova"
 cp .env.example .env
 ```
 
-### 2. Backend
+### 2. Database (one-time)
+
+The app needs a PostgreSQL 16+ database. Pick one:
+
+```bash
+# Option A — Docker (includes pgvector, Redis and MinIO):
+docker compose up -d
+
+# Option B — local PostgreSQL install (no Docker):
+# create the database once:
+#   psql -U postgres -c "CREATE DATABASE ai_scientist;"
+```
+
+Set `DATABASE_URL` in `.env` (see `.env.example`). Schema migrations apply
+automatically on first backend start. To migrate data from the legacy
+`database/research_store.json`:
+
+```bash
+py -m scripts.migrate_json_to_postgres --dry-run   # preview counts
+py -m scripts.migrate_json_to_postgres             # backup + migrate + verify
+py -m scripts.migrate_json_to_postgres --verify    # re-verify any time
+```
+
+Without `DATABASE_URL` (or with `STORE_DB_DISABLED=1`) the app runs on the
+legacy JSON file store — useful offline, and what the hermetic test suite uses.
+
+### 3. Backend
 
 ```bash
 # Install the FULL local stack (FastAPI + pandas/scikit-learn/xgboost/pyarrow).
@@ -88,7 +114,7 @@ set PYTHONUTF8=1 && py -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 The API is then available at `http://127.0.0.1:8000` (interactive docs at
 `/docs`).
 
-### 3. Frontend
+### 4. Frontend
 
 ```bash
 npm install
@@ -118,8 +144,23 @@ Every variable is **optional**. The app degrades gracefully:
   download work without it.
 - `MLFLOW_TRACKING_URI`: best-effort experiment logging with a short timeout;
   ignored if MLflow is not running.
-- `DATABASE_URL`, `REDIS_URL`: **reserved**. The persistent store is a local JSON
-  file; these are read but not yet wired to a live Postgres/Redis connection.
+- `DATABASE_URL`: **PostgreSQL 16+ connection string — the source of truth for
+  all application state** (projects, conversations, messages, datasets,
+  baselines, reports, jobs, settings). Local dev default (docker compose or a
+  local Postgres install): `postgresql://postgres:postgres@127.0.0.1:5432/ai_scientist`.
+  On Vercel, set it to a managed Postgres with pgvector (Neon / Supabase).
+  Migrations apply automatically on first connect; to migrate existing JSON
+  data run `py -m scripts.migrate_json_to_postgres` (supports `--dry-run` and
+  `--verify`). Without `DATABASE_URL` (or with `STORE_DB_DISABLED=1`) the app
+  falls back to the legacy JSON file store.
+- `PGVECTOR_ENABLED`: semantic retrieval via pgvector (memories, RAG chunks).
+  The schema degrades gracefully on Postgres servers without the extension;
+  Neon/Supabase include it out of the box.
+- `REDIS_URL`: cache / job-queue transport (durable job records live in
+  Postgres). Optional; leave unset to run without Redis.
+- `STORAGE_URL` / `STORAGE_BUCKET`: S3-compatible object storage (MinIO in
+  docker-compose, Supabase Storage in production) for dataset files and
+  artifacts. Unset = local directory adapter (`STORAGE_LOCAL_ROOT`).
 
 ### Security
 

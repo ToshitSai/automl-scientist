@@ -1,10 +1,17 @@
 """Shared pytest fixtures.
 
-Two guarantees for every test:
+Three guarantees for every test:
   * The on-disk research store is never touched (isolated temp file + no-op save).
+  * No real database is ever contacted (Postgres layer fully disabled).
   * The LLM is disabled, so tests exercise the deterministic fallback logic and
     prove the bot still behaves correctly when no provider is reachable.
 """
+import os
+
+# Must be set BEFORE database.store is imported: forces the store singleton to
+# the JSON-file path even when a developer's .env sets DATABASE_URL.
+os.environ.setdefault("STORE_DB_DISABLED", "1")
+
 import pytest
 
 import database.store as store_mod
@@ -20,6 +27,8 @@ def isolate_store(tmp_path, monkeypatch):
     # Never let a developer's local DATABASE_URL turn the unit suite into a live
     # DB test: the isolated store must use the in-memory/temp-file path only.
     monkeypatch.setattr(store, "backend", None)
+    monkeypatch.setattr(store, "repo", None)
+    monkeypatch.setattr(store, "_db_healthy", False)
     store.data = store._default_state()
     monkeypatch.setattr(store, "save", lambda *a, **k: None)
     return store
