@@ -29,6 +29,11 @@ from typing import Any, Dict, List, Optional
 DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000000"
 DEFAULT_USER_EXTERNAL_ID = "system"
 
+# Per-connection TCP connect timeout (repair task §23: the original backend had
+# a hard-coded 10s socket hang before failing over to JSON). Configurable so
+# local fail-fast (1-2s) and cloud deployments (5-10s) both work.
+CONNECT_TIMEOUT = max(1, int(os.environ.get("DB_CONNECT_TIMEOUT", "2")))
+
 
 # ---------------------------------------------------------------------------
 # pgvector helpers
@@ -83,7 +88,7 @@ class Repository:
                     pass
                 self._local.conn = None
         import psycopg
-        conn = psycopg.connect(self.url, connect_timeout=10)
+        conn = psycopg.connect(self.url, connect_timeout=CONNECT_TIMEOUT)
         conn.autocommit = False
         self._local.conn = conn
         return conn

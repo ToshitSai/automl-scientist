@@ -4,7 +4,9 @@ import json
 import operator
 import re
 from typing import Dict, Any, Optional, List, Tuple
-from backend.llm import query_llm, set_llm_budget, clear_llm_budget
+from backend.llm import (
+    query_llm, set_llm_budget, clear_llm_budget, DEFAULT_REQUEST_BUDGET,
+)
 from backend.calculator import try_evaluate
 from database.store import store
 import backend.config
@@ -44,6 +46,11 @@ GENERAL_ASSISTANT_SYSTEM_PROMPT = (
     "hypotheses, or research studies unless the user explicitly asks about them, "
     "and do NOT force the conversation into machine learning. Never invent "
     "facts, results, sources, or capabilities — if you are not sure, say so. "
+    "Premise check before answering: if the question embeds a factual assumption "
+    "(a cause, attribution, date, event, or claim) that is wrong or overstated, "
+    "politely correct that premise FIRST, then answer the underlying question as "
+    "far as it is useful. Apply this generically from your own knowledge — do not "
+    "invent corrections you are not confident about either. "
     "Be concise but complete."
 )
 
@@ -625,9 +632,17 @@ def classify_intent(
     # 2.5 MATHEMATICS — real calculation via the safe evaluator tools. Only claims
     # the request when a strict evaluator can actually compute it (try_evaluate
     # handles numeric expressions/functions/percentages; _try_calculate handles
-    # word forms like "2 plus 3"); anything else falls through instead of guessing.
+    # word forms like "2 plus 3"; the SymPy-backed math engine handles symbolic
+    # algebra/calculus — equations, systems, derivatives, integrals, limits — with
+    # built-in verification); anything else falls through instead of guessing.
     try:
         if try_evaluate(message) is not None or _try_calculate(message) is not None:
+            return "MATHEMATICS"
+    except Exception:
+        pass
+    try:
+        from backend.math_engine import solve_math
+        if solve_math(message) is not None:
             return "MATHEMATICS"
     except Exception:
         pass
@@ -824,11 +839,15 @@ def _honest_unknown(subject: str) -> str:
 
 
 def _conversation_context(session_id: Optional[str], limit: int = 6) -> str:
-    """Compact recent-turn transcript for grounding follow-ups (fixes F1/F2).
+    """Layered memory block for prompt assembly (repair task §10):
 
-    Uses the per-message history the store already records. Returns "" when there
-    is no history (e.g. a cold serverless instance where the file store did not
-    persist), so callers degrade gracefully to single-turn behaviour.
+        recent conversation window (last `limit` messages, near-verbatim)
+        + extractive summary of the older turns (when the history is longer)
+
+    Uses the per-message history the store already records. Returns "" when
+    there is no history (e.g. a cold serverless instance where the file store
+    did not persist), so callers degrade gracefully to single-turn behaviour.
+    Retrieval is bounded — the full conversation is never dumped into a prompt.
     """
     if not session_id:
         return ""
@@ -844,10 +863,29 @@ def _conversation_context(session_id: Optional[str], limit: int = 6) -> str:
             lines.append(f"{role}: {content[:280]}")
     if not lines:
         return ""
-    return (
-        "Recent conversation (context only — answer the LATEST user message):\n"
-        + "\n".join(lines) + "\n\n"
-    )
+    block = "Recent conversation (context only — answer the LATEST user message):\n"\
+        + "\n".join(lines) + "\n"
+    # Long-history synthesis (§10): when there are older turns beyond the
+    # window, prepend a short extractive summary so distant facts (e.g. what
+    # the user said their project was about many turns ago) still reach the
+    # model. Summaries come only from real stored messages — never invented.
+    older = msgs[:-limit] if len(msgs) > limit else []
+    if older:
+        try:
+            from backend.summarizer import summarize_text
+            older_text = " ".join(
+                (m.get("content") or "").strip().replace("\n", " ")
+                for m in older if m.get("content"))
+            if len(older_text) > 600:
+                summary = summarize_text(older_text, max_sentences=4)
+                if summary:
+                    block = (
+                        "Summary of earlier conversation turns:\n"
+                        + summary + "\n\n" + block
+                    )
+        except Exception:
+            pass
+    return block + "\n"
 
 
 def _general_answer(message: str, topic: Optional[str], history_ctx: str = "") -> str:
@@ -922,7 +960,11 @@ def handle_intent_message(
     request degrades to the honest fallback instead of hanging.
     """
     sid = session_id or "default-session"
-    set_llm_budget(10.0)
+    # Overall LLM budget for classification + answering on this request.
+    # Configurable (LLM_BUDGET env): long-form answers (multi-requirement
+    # decomposition, architecture design) legitimately need more than 10s on
+    # local/prod deployments; serverless can pin it back down via env.
+    set_llm_budget(DEFAULT_REQUEST_BUDGET)
     try:
         return _handle_intent_message_impl(message, active_project_id, session_id,
                                            payload_pending_action, payload_last_topic)
@@ -1100,6 +1142,30 @@ def _handle_intent_message_impl(
                     topic = key
                     break
 
+        # Multi-part / long prompts (§7/§8): extract the requirement checklist
+        # and answer every requirement in labelled sections. Falls through to
+        # the normal path when the prompt is not multi-part or no model is
+        # reachable (handle_complex returns None in both cases — never fakes).
+        complex_answer = None
+        try:
+            from backend.decomposition import handle_complex
+            complex_answer = handle_complex(
+                message, lambda p, s: query_llm(p, s, timeout=25))
+        except Exception:
+            complex_answer = None
+        if complex_answer:
+            store.clear_pending_action(sid)
+            store.update_session(sid, {"last_assistant_message": complex_answer})
+            return {
+                "intent": intent,
+                "taskType": "multi_part",
+                "response": complex_answer,
+                "action": "NONE",
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": sess.get("last_topic")
+            }
+
         history_ctx = _conversation_context(sid)
         answer = _general_answer(message, topic, history_ctx)
         # Pronoun follow-up ("why is it useful?") where the canned definition
@@ -1256,9 +1322,20 @@ def _handle_intent_message_impl(
         elif calc_str:
             resp_text = f"**{calc_str}**"
         else:
-            # The strict evaluators declined (e.g. a word problem): fall back to
-            # the general answer path rather than inventing a number.
-            resp_text = _general_answer(message, extract_topic(message))
+            # Symbolic math (equations, systems, derivatives, integrals, limits):
+            # the verified SymPy engine produces the exact answer offline.
+            math_res = None
+            try:
+                from backend.math_engine import solve_math, format_math_result
+                math_res = solve_math(message)
+            except Exception:
+                math_res = None
+            if math_res is not None:
+                resp_text = format_math_result(math_res)
+            else:
+                # The strict evaluators declined (e.g. a word problem): fall back to
+                # the general answer path rather than inventing a number.
+                resp_text = _general_answer(message, extract_topic(message))
         store.update_session(sid, {"last_assistant_message": resp_text})
         return {
             "intent": "MATHEMATICS",
@@ -1335,6 +1412,26 @@ def _handle_intent_message_impl(
     #     the built-in knowledge base (never invented).
     elif intent == "REASONING":
         store.clear_pending_action(sid)
+        # Long multi-requirement reasoning prompts get the decomposition
+        # pipeline (requirement checklist -> solve each -> coverage ledger).
+        complex_answer = None
+        try:
+            from backend.decomposition import handle_complex
+            complex_answer = handle_complex(
+                message, lambda p, s: query_llm(p, s, timeout=25))
+        except Exception:
+            complex_answer = None
+        if complex_answer:
+            store.update_session(sid, {"last_assistant_message": complex_answer})
+            return {
+                "intent": intent,
+                "taskType": "complex_reasoning",
+                "response": complex_answer,
+                "action": "NONE",
+                "projectId": active_project_id,
+                "pendingAction": None,
+                "lastTopic": sess.get("last_topic")
+            }
         # Remember the comparison subjects so a later "compare the two" style
         # pronoun follow-up can reuse them.
         subjects = [key for key in _KNOWLEDGE_KEYS_SORTED
@@ -1365,7 +1462,8 @@ def _handle_intent_message_impl(
             cmp_prompt,
             "You are a careful reasoning assistant. Structure the answer and only "
             "state facts you are confident about; note where the answer depends on "
-            "the user's specific context.",
+            "the user's specific context. If the question embeds a wrong factual "
+            "assumption, correct that premise first, then continue the reasoning.",
             timeout=15,
         )
         if answer and answer.strip():

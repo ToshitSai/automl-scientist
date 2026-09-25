@@ -15,3 +15,5 @@ __pycache__/
 *.pyc
 .aider*
 .env*
+.freebuff/
+artifacts/

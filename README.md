@@ -138,6 +138,16 @@ Every variable is **optional**. The app degrades gracefully:
   `MISTRAL_API_KEY`): the first valid provider is used. If none are set or all
   fail, deterministic heuristic fallbacks keep the workflow running.
 - `OPENAI_API_BASE`, `OPENAI_MODEL`: override the OpenAI endpoint/model.
+- `ANTHROPIC_MODEL`, `MISTRAL_MODEL`, per-provider `*_MAX_TOKENS`: model tiers
+  and output caps are env-configurable. An **explicitly selected provider is
+  honoured strictly** — no silent cross-provider fallback (repair task §15).
+- `LLM_TIMEOUT` (default 8s) and `LLM_BUDGET` (default 30s): per-provider
+  socket timeout and the per-request overall LLM budget. Long-form answers
+  (multi-requirement decomposition, architecture design) use the budget; lower
+  it on serverless, raise it for slow local models.
+- `DB_CONNECT_TIMEOUT` (default 2s): Postgres TCP connect timeout — startup
+  fails fast to the JSON dev fallback instead of hanging ~10s when the
+  database is unreachable (repair task §23).
 - `OPENALEX_API_KEY`: polite-pool access for literature search. Semantic Scholar
   is queried keyless.
 - `HF_TOKEN`: only needed for gated/private datasets. Public discovery and

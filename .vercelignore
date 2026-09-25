@@ -8,6 +8,8 @@ database/*.json
 tests
 finetuning
 requirements-finetune.txt
+.freebuff
+artifacts
 .env
 .env.local
 .env.*.local

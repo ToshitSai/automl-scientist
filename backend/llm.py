@@ -13,7 +13,18 @@ import backend.config  # Auto-loads .env into os.environ
 # Per-provider socket timeout. Was 30s x4 sequential (worst case ~2 minutes per
 # query_llm call, which starved the Vercel serverless response window); now 8s
 # and all providers race in parallel, so one call costs at most ~8s wall time.
-_DEFAULT_TIMEOUT = 8
+# Configurable via LLM_TIMEOUT (repair task §2b) for deployments with slower
+# models — the value is the per-provider socket cap AND the default overall wait.
+_DEFAULT_TIMEOUT = max(1, int(os.environ.get("LLM_TIMEOUT", "8")))
+
+# Default overall budget for query_llm when the caller did not set a tighter
+# request budget via set_llm_budget(). Long-form answers (multi-requirement
+# decomposition, architecture design) legitimately need more than 10s.
+_DEFAULT_BUDGET = max(1.0, float(os.environ.get("LLM_BUDGET", "30")))
+
+# Public alias: request-level budget applied by handle_intent_message() via
+# set_llm_budget(). One constant, one knob (LLM_BUDGET env).
+DEFAULT_REQUEST_BUDGET = _DEFAULT_BUDGET
 
 # Hard per-request LLM budget. handle_intent_message() sets a deadline; every
 # query_llm() call caps its wait to the remaining budget and skips entirely
@@ -62,7 +73,8 @@ def call_openai_api(prompt: str, system_prompt: Optional[str] = None, timeout: i
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": 0.2
+            "temperature": 0.2,
+            "max_tokens": int(os.environ.get("OPENAI_MAX_TOKENS", "2000")),
         }
 
         req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
@@ -118,8 +130,8 @@ def call_anthropic_api(prompt: str, system_prompt: Optional[str] = None, timeout
         }
 
         payload = {
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 1024,
+            "model": os.environ.get("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"),
+            "max_tokens": int(os.environ.get("ANTHROPIC_MAX_TOKENS", "1024")),
             "messages": [{"role": "user", "content": prompt}]
         }
         if system_prompt:
@@ -176,19 +188,55 @@ def call_mistral_api(prompt: str, system_prompt: Optional[str] = None, timeout: 
         print(f"[LLM Client Warning] Mistral call failed after {time.monotonic() - start:.2f}s: {e}")
         return None
 
+_PROVIDER_KEY_ENV = {
+    "openai": "OPENAI_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
+}
+
+
 def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = "auto", role: str = "main", timeout: int = _DEFAULT_TIMEOUT) -> Optional[str]:
     """
     Unified multi-provider LLM caller supporting OpenAI, Gemini, Anthropic Claude, and Mistral.
 
-    All providers are raced IN PARALLEL via a thread pool; the first successful
-    (non-None) result is returned immediately. The classic role preference
-    (main: OpenAI -> Gemini -> Anthropic -> Mistral; critic: Anthropic -> Gemini
-    -> OpenAI -> Mistral) only acts as a tie-break: if several succeed at the
-    same time the first to complete wins. The wait is capped by the `timeout`
-    parameter (default ~8s) and further by the request's overall LLM budget
-    (set_llm_budget) when one is active.
+    provider="auto" (default) races all configured providers IN PARALLEL via a
+    thread pool; the first successful (non-None) result is returned immediately.
+    The classic role preference (main: OpenAI -> Gemini -> Anthropic -> Mistral;
+    critic: Anthropic -> Gemini -> OpenAI -> Mistral) only acts as a tie-break:
+    if several succeed at the same time the first to complete wins.
+
+    An EXPLICIT provider ("openai" | "gemini" | "anthropic" | "mistral") is
+    honoured strictly (§15): only that provider is called and there is NO silent
+    cross-provider fallback. An explicitly selected provider without a key
+    returns None (callers surface a capability error) instead of pretending
+    another provider answered.
+
+    The wait is capped by the `timeout` parameter (default ~8s, env LLM_TIMEOUT)
+    and by the request's overall LLM budget (set_llm_budget) when one is active;
+    otherwise LLM_BUDGET (default 30s) applies so long-form answers can finish.
     """
-    if role == "critic":
+    provider = (provider or "auto").lower()
+    if provider != "auto":
+        # Explicit selection is strict (§15): only the requested provider is
+        # called — no silent cross-provider fallback. Built at call time so
+        # tests can monkeypatch provider functions.
+        table = {
+            "openai": ("OPENAI_API_KEY", call_openai_api),
+            "gemini": ("GEMINI_API_KEY", call_gemini_api),
+            "anthropic": ("ANTHROPIC_API_KEY", call_anthropic_api),
+            "mistral": ("MISTRAL_API_KEY", call_mistral_api),
+        }
+        if provider not in table:
+            print(f"[LLM Client Warning] unknown provider '{provider}' requested")
+            return None
+        env_name, fn = table[provider]
+        if not os.environ.get(env_name):
+            print(f"[LLM Client Warning] provider '{provider}' explicitly selected "
+                  f"but {env_name} is not configured")
+            return None
+        providers = (fn,)
+    elif role == "critic":
         providers = (call_anthropic_api, call_gemini_api, call_openai_api, call_mistral_api)
     else:
         providers = (call_openai_api, call_gemini_api, call_anthropic_api, call_mistral_api)
@@ -199,9 +247,15 @@ def query_llm(prompt: str, system_prompt: Optional[str] = None, provider: str = 
         return None
     # Cap the socket timeout to the requested timeout and the remaining budget.
     # The OVERALL wait is capped too: socket timeouts are per-read, so a slow
-    # streaming response could otherwise exceed the wall-time budget.
-    socket_timeout = timeout if remaining is None else max(1, min(timeout, math.ceil(remaining)))
-    wait_overall = timeout if remaining is None else max(0.05, remaining)
+    # streaming response could otherwise exceed the wall-time budget. When no
+    # request budget is active, the explicit timeout parameter is the cap
+    # (prior fix: query_llm never waits longer than its explicit timeout).
+    if remaining is None:
+        socket_timeout = timeout
+        wait_overall = timeout
+    else:
+        socket_timeout = max(1, min(timeout, math.ceil(remaining)))
+        wait_overall = max(0.05, remaining)
     start = time.monotonic()
 
     executor = ThreadPoolExecutor(max_workers=len(providers))
