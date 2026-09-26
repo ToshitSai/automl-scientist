@@ -365,6 +365,28 @@ def _date_supports(req: CurrentInfoRequest, page: Dict[str, str]) -> bool:
             or "latest" in extract[:800].lower())
 
 
+_INCEPTION_RE = re.compile(
+    r"\b(?:founded|established|inaugural|first\s+held|first\s+season|first\s+"
+    r"edition|began|started|created|launched|formed)\s+(?:in\s+)?(1[89]\d\d|20\d\d)\b",
+    re.IGNORECASE)
+
+
+def _entity_inception_year(entity: str) -> Optional[int]:
+    """Earliest inception/first-edition year stated in the entity's base article
+    ("founded in 2008", "inaugural season in 2008"), or None when unknown. Used
+    for GENERIC invalid-premise detection: a dated result for a year before the
+    entity existed can never be verified because it never happened (§4/§5)."""
+    titles = [t for t in _wiki_titles_for(entity, None)][:1]
+    for title in titles:
+        page = _fetch_page(title)
+        if not page:
+            continue
+        years = [int(y) for y in _INCEPTION_RE.findall(page.get("extract", "")[:1200])]
+        if years:
+            return min(years)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # 4. Fact extraction (question-intent scoring — no entity knowledge)
 # ---------------------------------------------------------------------------
@@ -608,7 +630,8 @@ def _extract_answer_sentence(req: CurrentInfoRequest, extract: str,
             sent_years = set(_YEAR_RE.findall(s))
             if sent_years and str(req.year) not in sent_years:
                 continue
-            if not sent_years and req.year != _dt.datetime.now(_dt.timezone.utc).year \
+            if not sent_years and not entity_bound \
+                    and req.year != _dt.datetime.now(_dt.timezone.utc).year \
                     and not re.match(rf"^[A-Z0-9].{{0,60}}?\b{re.escape(req.entity.split()[0]) if req.entity.split() else ''}\b",
                                      s, re.IGNORECASE):
                 continue
@@ -702,6 +725,24 @@ def answer_current_fact(req: Optional[CurrentInfoRequest],
                        "and I won't invent one."),
             "sources": [], "verified": False, "reason": "future_event",
         }
+
+    # Invalid-premise check (§4/§5): a dated result for a year BEFORE the entity
+    # existed can never be verified because it never happened. Detect this from
+    # the entity's own inception/first-edition year (generic — no per-entity
+    # knowledge) and correct the premise instead of claiming search failed.
+    if req.year and req.year < now.year:
+        inception = _entity_inception_year(req.entity)
+        if inception is not None and req.year < inception:
+            return {
+                "status": "invalid_premise", "question": req.question,
+                "answer": (
+                    f"The premise appears to be incorrect: {req.entity} did not "
+                    f"exist in {req.year} (it began around {inception}), so there "
+                    f"is no {req.year} result to report. If you meant a different "
+                    f"year from {inception} onward, tell me the year and I'll check."
+                ),
+                "sources": [], "verified": False, "reason": "invalid_premise",
+            }
 
     # 1) Keyless structured source: Wikipedia article (relevance+date checked).
     #    Without an explicit year, recurring events are tried per edition
@@ -815,6 +856,32 @@ def answer_current_fact(req: Optional[CurrentInfoRequest],
                     "sources": sources, "verified": False,   # snippet-level: lower confidence
                     "reason": ""}
 
+    # 2b) HISTORICAL fallback to base-model knowledge (§2/§7/§12): a past-year
+    #     fact is stable, so when no live/structured source verifies it the model
+    #     may answer from knowledge — clearly labelled as such. CURRENT-year facts
+    #     and prices never take this path (no guessing about the present).
+    if req.year and req.year < now.year and req.aspect != "price":
+        try:
+            from backend.llm import query_llm
+            kb = query_llm(
+                f"Answer the question in one or two sentences using only well-"
+                f"established historical knowledge. If you are not confident, reply "
+                f"with exactly the word UNSURE.\nQuestion: {req.question}",
+                "You are a careful factual assistant. State only facts you are "
+                "confident about; otherwise reply UNSURE.",
+                timeout=12,
+            )
+            kb = (kb or "").strip()
+            if kb and kb.upper() != "UNSURE" and len(kb) < 600:
+                return {"status": "ok", "question": req.question, "answer": kb,
+                        "sources": [{"title": "model knowledge (historical fact)",
+                                     "url": "", "date": "",
+                                     "relevance": "stable historical fact from model "
+                                                  "knowledge; no live source reached"}],
+                        "verified": False, "reason": "model_knowledge_historical"}
+        except Exception:
+            pass
+
     # 3) Honest unavailability (§5/§6/§13): no substitution, no guess.
     if req.year and req.year == now.year:
         reason = "event_maybe_incomplete"
@@ -841,7 +908,10 @@ def format_current_fact(result: Dict) -> str:
             date_note = f" (updated {src['date']})" if src.get("date") else ""
             conf = "" if result.get("verified") else \
                 " — _snippet-level match, open the link to confirm_"
-            lines.append(f"Source: [{src['title']}]({src['url']}){date_note}{conf}")
+            if src.get("url"):
+                lines.append(f"Source: [{src['title']}]({src['url']}){date_note}{conf}")
+            else:
+                lines.append(f"Source: {src['title']}{date_note}")
         return "\n".join(lines)
     return result.get("answer") or (
         "I can't reliably verify this right now because live search is unavailable.")
