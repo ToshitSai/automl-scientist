@@ -49,21 +49,28 @@ export default function SettingsModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none">
-      <div className="bg-[#131824] border border-[#232D3F] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 select-none">
+      {/* Desktop: centered dialog. Mobile: near-full-screen sheet (fits any
+          viewport — no fixed 800px dialog) with internal scrolling. */}
+      <div className="bg-[#131824] border border-[#232D3F] sm:rounded-2xl rounded-none w-full max-w-lg h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-y-auto overscroll-contain p-4 sm:p-6 shadow-2xl space-y-6 min-w-0"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#212B3B] pb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <div className="flex items-center gap-2 min-w-0">
+            <svg className="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <h3 className="text-base font-bold text-slate-100">AutoML Scientist Settings</h3>
+            <h3 className="text-base font-bold text-slate-100 truncate">AutoML Scientist Settings</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 transition-colors"
+            aria-label="Close settings"
+            className="w-10 h-10 -mr-2 shrink-0 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#161B26] transition-colors"
           >
             ✕
           </button>
@@ -104,10 +111,10 @@ export default function SettingsModal({ isOpen, onClose }) {
           </div>
 
           {/* Docker & Sandbox Info */}
-          <div className="p-3 bg-[#0D111A] rounded-lg border border-[#212B3B] space-y-1.5 font-mono text-[11px]">
-            <div className="flex justify-between items-center text-slate-300">
+          <div className="p-3 bg-[#0D111A] rounded-lg border border-[#212B3B] space-y-1.5 font-mono text-[11px] min-w-0">
+            <div className="flex flex-wrap justify-between items-center gap-x-2 text-slate-300">
               <span>Sandboxed Execution Mode:</span>
-              <span className="text-cyan-400 font-bold">{settings.sandboxMode}</span>
+              <span className="text-cyan-400 font-bold break-all">{settings.sandboxMode}</span>
             </div>
             <div className="flex justify-between items-center text-slate-400 text-[10px]">
               <span>Docker Daemon Availability:</span>

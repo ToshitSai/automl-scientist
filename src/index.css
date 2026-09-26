@@ -25,6 +25,38 @@
   background: #334155;
 }
 
+/* Long tokens (URLs, IDs, metric dumps, code) wrap inside chat cards, dataset
+   cards, the report and the telemetry panel instead of stretching the page.
+   The PAGE itself never scrolls horizontally: containers use min-w-0 and let
+   content break, while only intentional internal areas (telemetry panel,
+   sidebar history) scroll. */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Code / pre content may scroll INTERNALLY but must never expand the page. */
+pre, code {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Responsive tables (any future technical tables) scroll inside their own
+   container — the page never scrolls horizontally because of a table. */
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* On very small phones the brand row of the start screen needs a little more
+   breathing room so the title never feels clipped. */
+@media (max-width: 359px) {
+  .overflow-wrap-anywhere { word-break: break-word; }
+}
+
 .glow-cyan {
   box-shadow: 0 0 25px -5px rgba(0, 240, 255, 0.25);
 }

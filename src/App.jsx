@@ -30,6 +30,30 @@ export default function App() {
   const [llmConfigured, setLlmConfigured] = useState(false);
   const [isInChatWorkspace, setIsInChatWorkspace] = useState(false);
   const [conversationId, setConversationId] = useState(null);
+  // Mobile sidebar drawer (<1024px): overlays the chat instead of squeezing it.
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Escape closes the drawer (and the settings modal keeps its own handling).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setIsSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Resizing up to the desktop breakpoint closes the drawer so the state never
+  // goes stale (the drawer is CSS-hidden on desktop anyway).
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e) => { if (e.matches) setIsSidebarOpen(false); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
 
   const loadProjects = async () => {
     const list = await fetchProjects();
@@ -164,8 +188,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#0B0F17] text-slate-100 font-sans overflow-hidden">
-      
-      {/* Sakana Chat Style Left Sidebar */}
+
+      {/* Sakana Chat Style Left Sidebar — desktop rail / mobile drawer */}
       <Sidebar
         projects={projects}
         activeProject={activeProject}
@@ -174,14 +198,19 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         dockerReady={dockerReady}
         llmConfigured={llmConfigured}
+        isMobileOpen={isSidebarOpen}
+        onMobileClose={() => setIsSidebarOpen(false)}
       />
 
-      {/* Main Screen: Research Start Composer or Conversational Workspace */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0B0F17]">
+      {/* Main Screen: Research Start Composer or Conversational Workspace.
+          min-w-0 is essential: without it the flex child cannot shrink below
+          its content width and the page overflows horizontally on phones. */}
+      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden bg-[#0B0F17]">
         {!isInChatWorkspace && !activeProject ? (
           <ResearchStartScreen
             onSendChatMessage={handleSendInitialChatMessage}
             isLaunching={isLaunching}
+            onOpenMenu={() => setIsSidebarOpen(true)}
           />
         ) : (
           <ResearchChatWorkspace
@@ -194,6 +223,7 @@ export default function App() {
             onApproveDataset={handleApproveDataset}
             isApproving={isApproving}
             conversationId={conversationId || getConversationId(activeProject?.id || 'general')}
+            onOpenMenu={() => setIsSidebarOpen(true)}
           />
         )}
       </main>

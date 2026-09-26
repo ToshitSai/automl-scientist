@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) {
+export default function ResearchStartScreen({ onSendChatMessage, isLaunching, onOpenMenu }) {
   const [objective, setObjective] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [datasetMode, setDatasetMode] = useState('auto'); // 'auto' | 'upload'
@@ -25,7 +25,25 @@ export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) 
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-screen bg-[#0B0F17] select-none">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-screen bg-[#0B0F17] select-none">
+      {/* Mobile menu button — only visible below lg where the drawer replaces
+          the sidebar; positioned in-flow at the top-left of the screen. */}
+      {onOpenMenu && (
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center px-3 pt-3 pointer-events-none"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            aria-label="Open menu"
+            aria-expanded="false"
+            className="pointer-events-auto w-11 h-11 flex items-center justify-center rounded-xl bg-[#131822]/90 border border-[#212B3B] text-slate-300 hover:text-slate-100 transition-colors shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      )}
       <div className="w-full max-w-2xl flex flex-col items-center space-y-8">
         
         {/* Brand Symbol & Title */}
@@ -136,9 +154,9 @@ export default function ResearchStartScreen({ onSendChatMessage, isLaunching }) 
             </button>
           </div>
 
-          {/* Advanced Parameters Drawer */}
+          {/* Advanced Parameters Drawer — 1 col phones / 2 col tablet / 3 col desktop */}
           {showAdvanced && (
-            <div className="grid grid-cols-3 gap-3 p-3 bg-[#0B0F17] border border-[#212B3B] rounded-xl text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 bg-[#0B0F17] border border-[#212B3B] rounded-xl text-xs">
               <div>
                 <label className="text-[10px] text-slate-500 uppercase block mb-1 font-semibold">Budget</label>
                 <select
