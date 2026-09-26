@@ -122,3 +122,59 @@ Not touched, per directive: all repairs are architecture (routing, tools, contex
 ## §30 — safety
 
 No hard-coded Q→A pairs anywhere (regression probes check capabilities, not memorized strings; unit tests use different phrasings/variables). No secrets printed or committed. No destructive git/DB operations. JSON dev fallback preserved; hermetic test guarantee (`STORE_DB_DISABLED=1`) intact.
+
+## 13. Current-information addendum (follow-up directive §1–§20)
+
+**Failure fixed:** "Who won 2026 IPL?" returned keyless *reference background*
+("No live web-search provider is configured, so here's reference background…")
+instead of the requested fact — the system answered a different question.
+
+**Architecture (generic — no entity hard-coding anywhere):**
+`backend/current_info.py` implements the required chain:
+
+> CURRENT QUESTION → detect time sensitivity → focus query (entity + aspect +
+> year) → retrieve (keyed web providers when configured, else keyless
+> Wikipedia article API) → verify (source relevance + publication/date
+> support + fact-shaped sentence extraction) → DIRECT ANSWER → source.
+
+- **Detection/routing** (`backend/intent_router.py` stage 2.6): structural
+  question patterns only — "who won X", "current CEO of X", "latest <product>",
+  prices/scores/weather, runner-up questions. News listings ("latest IPL news")
+  are declined to `WEB_SEARCH`; research verbs keep `DEEP_RESEARCH` (§17 trio
+  verified live: "What is cricket?" → EXPLANATION, "Research IPL history." →
+  DEEP_RESEARCH, "Who won 2026 IPL?" → CURRENT_INFORMATION).
+- **Verification**: relevance gate (page must actually be about the entity),
+  date gate (article must cover the event year; future events fail closed),
+  and per-sentence extraction that requires aspect keywords ("defeated",
+  "to win their … title", office patterns) plus result-structure signals
+  (win margins, purpose clauses); schedule/context/anecdote sentences are
+  penalised or skipped. Sentence-initial pronouns are resolved against the
+  previous sentence ("They defended their title…" → names the champion).
+- **Never substitutes** (§6): when no verifiable fact is extracted, the reply
+  is "I can't reliably verify this right now because live search is
+  unavailable…" — background is never pasted instead. Prices are never taken
+  from static articles (live market data or honest refusal). Verified page
+  answers are `verified: true`; snippet-only answers are labeled
+  "snippet-level — open the link to confirm" (§13: confidence never invented).
+- **Future events** (§16): "Who won IPL 2027?" short-circuits before any
+  retrieval: event hasn't taken place; nothing invented.
+- **Structured result** (§14): `{status, question, answer, sources[], verified,
+  reason}` stays internal; the user sees direct answer + `Source: [title](url)
+  (updated date)` — never raw JSON (§10: no generic filler appended).
+
+**Resilience:** bounded retries + a TTL cache that caches only real negatives
+(a transient network failure is never cached, so one blip can't hide an
+answerable question behind "cannot verify"); edition/title guards drop
+wrong-year and future pages and defer qualifiers (Women's/U-19) unless asked.
+
+**Evidence:**
+- `scripts/current_info_acceptance.py`: **13/13 PASS twice consecutively**
+  (all §15 cases + §16 negative + §17 trio) against the live backend.
+- §19 verbatim: 2026 IPL → RCB defeated Gujarat Titans by 5 wickets + source;
+  2025 IPL → RCB won their first title in 2025 + source; 2027 → honest
+  non-fabrication.
+- `tests/test_current_information.py`: 27 hermetic tests (fictional entities
+  only — proves generality); full suite **291 passed, 6 skipped**.
+- Known limitation (unchanged class): without search-provider keys, fresh
+  prices/live scores remain honest-refusals; Wikipedia article pages are the
+  verifiable keyless source (updated-date shown with every answer).

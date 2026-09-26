@@ -21,6 +21,7 @@ INTENT_CATEGORIES = [
     "CALCULATION",
     "MATHEMATICS",
     "WEB_SEARCH",
+    "CURRENT_INFORMATION",
     "REASONING",
     "WRITING",
     "DEEP_RESEARCH",
@@ -647,6 +648,21 @@ def classify_intent(
     except Exception:
         pass
 
+    # 2.6 CURRENT_INFORMATION — single-fact time-sensitive questions ("Who won
+    #     IPL 2026?", "Who is the current CEO of X?", "What is the latest NVIDIA
+    #     GPU?", "Who won IPL 2027?"). These need a verified direct answer with
+    # a source, not a background listing (WEB_SEARCH) and not static knowledge.
+    # Explicit research verbs keep DEEP_RESEARCH (§17 regression: "Research IPL
+    # history."); news listings are declined by the extractor itself and stay
+    # with WEB_SEARCH ("What is the latest IPL news?").
+    if not re.search(r"\b(?:research|investigate|deep dive|survey)\b", msg_clean):
+        try:
+            from backend.current_info import extract_current_fact_request
+            if extract_current_fact_request(message) is not None:
+                return "CURRENT_INFORMATION"
+        except Exception:
+            pass
+
     # 2.8 Current-information signals beat the research/ML triggers — UNLESS
     # the message carries an explicit research verb ("Research the latest
     # developments in quantum computing." is deep research, not web search).
@@ -806,7 +822,8 @@ def classify_intent(
             "Classify user intent into EXACTLY ONE: CONFIRM_PENDING_ACTION, "
             "EXPLANATION, CODING, DEEP_RESEARCH, DATA_ANALYSIS, DOCUMENT_ANALYSIS, "
             "RESEARCH_START, RESEARCH_FOLLOWUP, RESEARCH_CONTROL, REPORT_REQUEST, "
-            "TECHNICAL_DETAILS, CASUAL_CHAT, MATHEMATICS, WEB_SEARCH, REASONING, "
+            "TECHNICAL_DETAILS, CASUAL_CHAT, MATHEMATICS, WEB_SEARCH, "
+            "CURRENT_INFORMATION, REASONING, "
             "WRITING."
         )
         user_prompt = f"User Input: \"{message}\"\nCategory:"
@@ -1340,6 +1357,39 @@ def _handle_intent_message_impl(
         return {
             "intent": "MATHEMATICS",
             "taskType": "calculation",
+            "response": resp_text,
+            "action": "NONE",
+            "projectId": active_project_id,
+            "pendingAction": None,
+            "lastTopic": sess.get("last_topic")
+        }
+
+    # 4b2. CURRENT_INFORMATION — verified direct answer for time-sensitive
+    #      single-fact questions ("Who won 2026 IPL?"): answer first, then the
+    #      source. The structured result stays internal (§14) — the user sees
+    #      formatted prose, never raw JSON. Honest-unavailable when nothing
+    #      verifiable was found (§5/§6/§13) — never generic background filler.
+    elif intent == "CURRENT_INFORMATION":
+        store.clear_pending_action(sid)
+        try:
+            from backend.current_info import (
+                extract_current_fact_request, answer_current_fact, format_current_fact,
+            )
+            ci_req = extract_current_fact_request(message)
+            ci_res = answer_current_fact(ci_req)
+            resp_text = format_current_fact(ci_res) if ci_res is not None else None
+        except Exception as ci_err:
+            print(f"[CURRENT INFO WARNING]: {ci_err}")
+            resp_text = None
+        if not (resp_text and resp_text.strip()):
+            resp_text = (
+                "I can't reliably verify this right now because live search is "
+                "unavailable, and I won't substitute background or guess."
+            )
+        store.update_session(sid, {"last_assistant_message": resp_text})
+        return {
+            "intent": "CURRENT_INFORMATION",
+            "taskType": "current_information",
             "response": resp_text,
             "action": "NONE",
             "projectId": active_project_id,

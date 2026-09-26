@@ -148,6 +148,16 @@ Every variable is **optional**. The app degrades gracefully:
 - `DB_CONNECT_TIMEOUT` (default 2s): Postgres TCP connect timeout — startup
   fails fast to the JSON dev fallback instead of hanging ~10s when the
   database is unreachable (repair task §23).
+- `TAVILY_API_KEY` / `SERPER_API_KEY` / `BRAVE_API_KEY`: live web-search
+  providers for `WEB_SEARCH` and `CURRENT_INFORMATION`. **No key is
+  required** — keyless DuckDuckGo/Wikipedia sources are used automatically;
+  with a key, current-fact answers also gain fresh market/news snippets.
+- **Current information (no config needed)**: time-sensitive single-fact
+  questions ("Who won 2026 IPL?", "Who is the current CEO of X?", "What is
+  the latest NVIDIA GPU?") are routed to a verified-lookup pipeline:
+  focused retrieval → relevance + date verification → direct answer with
+  source. Future events and live prices without market data get an honest
+  "can't verify" — never a guess, and never unrelated background.
 - `OPENALEX_API_KEY`: polite-pool access for literature search. Semantic Scholar
   is queried keyless.
 - `HF_TOKEN`: only needed for gated/private datasets. Public discovery and
