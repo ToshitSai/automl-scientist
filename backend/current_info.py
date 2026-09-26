@@ -379,7 +379,9 @@ _ASPECT_KEYWORDS = {
                 "broadcast", "branding", "was announced", "known as",
                 "participated", "points table", "playoff", "qualification",
                 "promotion", "cycle", "relegation", "previous season",
-                "having won", "were confirmed", "inaugural match"],
+                "having won", "were confirmed", "inaugural match",
+                "match against", "matches against", "group stage",
+                "league stage", "their next"],
     },
     "holder": {
         "pos": ["chief executive", "ceo", "president", "serves as", "incumbent",
