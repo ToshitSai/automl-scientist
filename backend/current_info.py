@@ -415,6 +415,87 @@ _HOLDER_ROLE_RE = re.compile(
     r"\b(ceo|cto|cfo|coo|president|prime\s+minister|chancellor|chairman|"
     r"owner|captain|coach|governor|mayor)\b", re.IGNORECASE)
 
+# Which ORGANISATION a sentence attributes the office to ("Anthropic's CEO ...",
+# "... the CEO of Anthropic"). Used to reject cross-entity office claims.
+_ROLE_OWNER_POSSESSIVE_RE = re.compile(
+    r"\b([A-Z][A-Za-z0-9'&.\-]+(?:\s+[A-Z][A-Za-z0-9'&.\-]+){0,3})['’]s\s+"
+    r"(?:ceo|chief executive|president|chairman|chief \w+ officer)\b",
+    re.IGNORECASE)
+_ROLE_OWNER_OF_RE = re.compile(
+    r"\b(?:ceo|chief executive|president|chairman|chief \w+ officer)\s+of\s+"
+    r"([A-Z][A-Za-z0-9'&.\-]+(?:\s+[A-Z][A-Za-z0-9'&.\-]+){0,3})",
+    re.IGNORECASE)
+
+
+def _sentence_role_owner(sentence: str) -> Optional[str]:
+    """The organisation a sentence ties the office to, or None when unnamed."""
+    m = (_ROLE_OWNER_POSSESSIVE_RE.search(sentence or "")
+         or _ROLE_OWNER_OF_RE.search(sentence or ""))
+    return m.group(1).strip() if m else None
+
+
+def _owner_matches_entity(owner: str, entity: str) -> bool:
+    """True when the office-holding organisation IS the requested entity."""
+    o = (owner or "").lower().strip()
+    e = (entity or "").lower().strip()
+    if not o or not e:
+        return False
+    if e in o or o in e:
+        return True
+    etoks = _entity_tokens(entity)
+    return any(t in o for t in etoks)
+
+
+_ROLE_PHRASE = (r"(?:ceo|chief executive officer|chief executive|president|"
+                r"chairman|chief \w+ officer|chief \w+ \w+ officer)")
+
+
+def _entity_owned_role(sentence: str, entity: str) -> Optional[str]:
+    """The office the sentence gives to the ENTITY itself ("<Entity>'s CTO",
+    "the CEO of <Entity>"), or None when the entity holds no named office."""
+    e = re.escape((entity or "").strip())
+    if not e:
+        return None
+    m = re.search(rf"\b{e}['’]s\s+([a-z\s]{{0,28}}?{_ROLE_PHRASE})\b",
+                  sentence or "", re.IGNORECASE)
+    if not m:
+        m = re.search(rf"\b({_ROLE_PHRASE})\s+of\s+{e}\b", sentence or "",
+                      re.IGNORECASE)
+    return m.group(1).strip().lower() if m else None
+
+
+def _role_matches_request(owned_role: str, roles: List[str]) -> bool:
+    """True when the office named for the entity is the one being asked about."""
+    owned = (owned_role or "").lower()
+    for role in roles:
+        if role == "ceo":
+            if "chief executive" in owned or re.search(r"\bceo\b", owned):
+                return True
+        elif role in owned:
+            return True
+    return False
+
+
+def _holder_incumbency(sentence: str, roles: List[str], entity: str) -> bool:
+    """True when the sentence states incumbency of the requested office tied to
+    the ENTITY ("<Person> is the CEO of <Entity>", "<Entity> is led by CEO
+    <Person>", "<Entity>'s CEO is <Person>"), rather than an unrelated anecdote."""
+    low = (sentence or "").lower()
+    e = re.escape((entity or "").strip())
+    for role in roles:
+        if not re.search(rf"\b{role}\b", low):
+            continue
+        if re.search(rf"\bis\s+(?:the\s+)?(?:current\s+)?{role}\b", low) \
+           or re.search(rf"\bserves?\s+as\s+(?:the\s+)?{role}\b", low) \
+           or re.search(rf"\bbecame\s+(?:the\s+)?{role}\b", low) \
+           or re.search(rf"\bwas\s+named\s+(?:the\s+)?{role}\b", low) \
+           or re.search(rf"\btook\s+over\s+as\s+(?:the\s+)?{role}\b", low) \
+           or re.search(rf"\bled by\b[^.]{{0,40}}\b{role}\b", low) \
+           or re.search(rf"{e}['’]s\s+{role}\b", low) \
+           or re.search(rf"\b{role}\s+of\s+{e}\b", low):
+            return True
+    return False
+
 # Structural (entity-free) signals that a sentence states the FINAL RESULT of
 # an event, not season context: a win margin ("by 6 runs") and a purpose
 # clause ("... to win their maiden title"). Schedule/context sentences never
@@ -480,6 +561,20 @@ def _extract_answer_sentence(req: CurrentInfoRequest, extract: str,
         if kw_score <= 0:
             continue                     # a fact needs a fact-shaped sentence
         core_ok = any(t in low for t in entity_toks)
+        # A holder question asks who holds the office OF THE REQUESTED ENTITY.
+        # A sentence that ties the role to a DIFFERENT organisation
+        # ("Anthropic's CEO published ..." on an OpenAI page) is not evidence
+        # for it — reject rather than answer with the wrong company's executive
+        # (§11: the source must actually support the asked fact).
+        if req.aspect == "holder":
+            owner = _sentence_role_owner(s)
+            if owner and not _owner_matches_entity(owner, req.entity):
+                continue
+            owned_role = _entity_owned_role(s, req.entity)
+            if owned_role and not _role_matches_request(owned_role, roles):
+                continue
+            if not _holder_incumbency(s, roles, req.entity):
+                continue
         # On a page ABOUT the entity, the fact is often stated with the entity
         # implied — edition pages say "Delta Lions defeated Alpha Kings in the
         # final", not "... in the Nova League final". When the PAGE itself was
@@ -527,7 +622,9 @@ def _extract_answer_sentence(req: CurrentInfoRequest, extract: str,
                 if re.search(rf"\b(?:is|are)\s+(?:the\s+)?[a-z\-]{{0,30}}?{role}\b", low) \
                         or re.search(rf"\b(?:serves?|served|appointed|named|became)\s+"
                                      rf"(?:as\s+)?(?:the\s+)?[a-z\-]{{0,30}}?{role}\b", low) \
-                        or (re.search(rf"{role}\s+of\b", low) and " current" in low):
+                        or (re.search(rf"{role}\s+of\b", low) and " current" in low) \
+                        or re.search(rf"\bled by\b[^.]*\b{role}\b", low) \
+                        or re.search(rf"\b{role}\b\s+[A-Z][a-z]{{2,}}", s):
                     score += 6
             if re.search(r"\b(?:on|in)\s+(?:january|february|march|april|may|june|"
                          r"july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\b",
